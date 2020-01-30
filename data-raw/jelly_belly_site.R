@@ -27,23 +27,25 @@ jb_mask <- load.image("inst/JellyBellyMask.png")[,,,1] %>%
 
 # This function averages the color over the chunk and reports the results in HSV colorspace instead of RGB
 average_color <- function(im) {
+  # Convert to HSV color space
   imhsv <- RGBtoHSV(im)
 
+  # Split along color channels
   x <- imsplit(imhsv, "c")
+
+  # Normalize the hue (imager compatibility)
   x[[1]] <- x[[1]]/360
 
+  # Create tibble w/ image and summary stats
   df <- tibble(h = as.numeric(x[[1]]), s = as.numeric(x[[2]]), v = as.numeric(x[[3]]))
   df_mean <- summarize_all(df, c(mean = mean, med = median, var = var)) %>%
     mutate(im = list(imhsv))
 }
 
-# This function splits the image up
-# First, it masks anything that isn't actual jelly beans
-# Second, using the jelly bean portion of the image, it divides
-# the image into a grid of square chunks. Only chunks fully within
-# the region retained after masking are kept.
-# The average color of each chunk is computed as a summary measure.
+# This function splits the image and mask up into square chunks
 avg_color_chunks <- function(im, mask = jb_mask, nb = 50) {
+  # From the mask, we test each chunk to determine if it is completely
+  # made up of white pixels. This is stored as an index (mask_chunks)
   mask_chunks <- imsplit(mask, "x", nb = nb) %>%
     purrr::map(., imsplit, "y", nb = nb) %>%
     purrr::map(., ~purrr::map_dbl(., mean) == 1) %>%
@@ -53,8 +55,13 @@ avg_color_chunks <- function(im, mask = jb_mask, nb = 50) {
     purrr::map(., imsplit, "y", nb = nb) %>%
     unlist(recursive = F)
 
+  # Using the index, we keep only chunks of the image
+  # (which is the same size as the mask) that correspond to completely
+  # white chunks of the mask.
+
+  # Then, the average color of each chunk is calculated as a summary
   tmp <- purrr::map_df(im_chunks[mask_chunks], average_color)
-  # tmp$imgchunk <- im_chunks[mask_chunks]
+  # average_color returns a tibble containing both the image chunk and the average color
   tmp
 }
 
