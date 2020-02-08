@@ -1,5 +1,6 @@
-# library(imager)
+
 library(tidyverse)
+# library(imager)
 #
 # im <- load.image("data/Berry Blue.png")
 # mask <- load.image("inst/JellyBellyMask.png") %>% channel(1) %>% erode_square(5)
@@ -65,8 +66,8 @@ library(tidyverse)
 #
 # thresh_im <- map_il(immask, ~threshold(., adjust = 1.75))
 # thresh_im_levels <- map_il(thresh_im, ~imsplit(., "c")  %>% enorm %>% add() %>% sqrt())
-
-# Maybe count separate objects and try several thresholds? Or median object size?
+#
+# # Maybe count separate objects and try several thresholds? Or median object size?
 
 
 
@@ -83,6 +84,16 @@ mask_img <- function(im, mask, value = max(im)) {
 }
 
 imlst_mask <- map(imlst, partial(mask_img, mask = mask3))
-
 combine(imlst_mask) %>% plot(all = T)
+
+imlst_gray <- map(imlst_mask, ~channel(., mode = "luminance"))
+
+imlst_thresh <- map(imlst_gray, ~thresh(., w = 30, h = 30, offset = 0.00001))
+combine(imlst_thresh) %>% plot(all = T)
+
+imlst_remask <- map(imlst_thresh, ~mask_img(., mask, value = 0))
+combine(imlst_remask) %>% plot(all = T)
+
+imlst_label <- map(imlst_remask, bwlabel) %>% map(., colorLabels)
+combine(imlst_label[1:9]) %>% plot(all = T)
 
