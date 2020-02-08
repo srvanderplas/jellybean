@@ -3,18 +3,18 @@ library(xml2)
 library(tidyverse)
 library(imager)
 
-# jb_pages <- "https://www.jellybelly.com/bulk-a-bunch/c/305?pageSize=500"
-#
-# imgs <- read_html(jb_pages) %>%
-#   html_nodes("img")
-#
-# img_data <- tibble(node = imgs, alt = map_chr(imgs, html_attr, "alt"), src = map_chr(imgs, html_attr, "src")) %>%
-#   filter(str_detect(alt, "10 lbs bulk") & !str_detect(alt, "Assorted|Mix") & str_detect(alt, "Jelly Beans")) %>%
-#   mutate(src = str_remove(src, "\\?.*$")) %>%
-#   mutate(img = map(src, load.image)) %>%
-#   mutate(flavor = str_remove(alt, " Jelly Beans - 10 lbs bulk"))
-#
-# purrr::walk2(img_data$img, paste0("data/", img_data$flavor, ".png"), save.image)
+jb_pages <- "https://www.jellybelly.com/bulk-a-bunch/c/305?pageSize=500"
+
+imgs <- read_html(jb_pages) %>%
+  html_nodes("img")
+
+img_data <- tibble(node = imgs, alt = map_chr(imgs, html_attr, "alt"), src = map_chr(imgs, html_attr, "src")) %>%
+  filter(str_detect(alt, "bulk") & !str_detect(alt, "Assorted|Mix") & str_detect(alt, "Jelly Beans")) %>%
+  mutate(src = str_remove(src, "\\?.*$")) %>%
+  mutate(img = map(src, load.image)) %>%
+  mutate(flavor = str_remove(alt, " Jelly Beans -.*ulk"))
+
+purrr::walk2(img_data$img, paste0("data/", img_data$flavor, ".png"), save.image)
 
 imgs <- tibble(file = list.files("data/"),
                name = str_remove(file, "\\.png"),

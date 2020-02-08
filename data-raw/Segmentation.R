@@ -57,11 +57,32 @@ level <- table(thresh_im_levels) %>% sort(decreasing = T) %>% names() %>% extrac
 as.pixset(thresh_im_levels >= level ) %>% erode_square(80) %T>% plot()
 
 
+## Trying against all images
 
-im <- load.image("data/A&W® Cream Soda.png")
+mask <- load.image("inst/JellyBellyMask.png") %>% channel(1) %>% erode_square(5)
+imlst <- map_il(list.files("data", "*.png", full.names = T), load.image)
+immask <- map_il(imlst, ~imsplit(., "c") %>% map_il(., ~.*mask) %>% imappend("c"))
 
-immask <- imsplit(im, "c") %>% map_il(., ~.*mask) %>% imappend("c")
-
-thresh_im <- immask %>% threshold(adjust = 1.75) %T>% plot()
+thresh_im <- map_il(immask, ~threshold(., adjust = 1.75))
+thresh_im_levels <- map_il(thresh_im, ~imsplit(., "c")  %>% enorm %>% add() %>% sqrt())
 
 # Maybe count separate objects and try several thresholds? Or median object size?
+
+
+
+library(EBImage)
+mask <- readImage("inst/JellyBellyMask.png")[,,1] %>% erode(., kern = makeBrush(35, "disc"))
+mask3 <- abind::abind(mask, along = 3) %>% abind::abind(., ., ., along = 3) %>% Image(colormode = "Color")
+
+imlst <- map(list.files("data", "*.png", full.names = T), readImage)
+
+mask_img <- function(im, mask, value = max(im)) {
+  im2 <- im
+  im2[!mask] <- value
+  im2
+}
+
+imlst_mask <- map(imlst, partial(mask_img, mask = mask3))
+
+combine(imlst_mask) %>% plot(all = T)
+
