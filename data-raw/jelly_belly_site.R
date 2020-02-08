@@ -9,7 +9,7 @@ imgs <- read_html(jb_pages) %>%
   html_nodes("img")
 
 img_data <- tibble(node = imgs, alt = map_chr(imgs, html_attr, "alt"), src = map_chr(imgs, html_attr, "src")) %>%
-  filter(str_detect(alt, "bulk") & !str_detect(alt, "Assorted|Mix") & str_detect(alt, "Jelly Beans")) %>%
+  filter(str_detect(alt, "[Bb]ulk") & !str_detect(alt, "Assorted|Mix") & str_detect(alt, "Jelly Beans")) %>%
   mutate(src = str_remove(src, "\\?.*$")) %>%
   mutate(img = map(src, load.image)) %>%
   mutate(flavor = str_remove(alt, " Jelly Beans -.*ulk"))
