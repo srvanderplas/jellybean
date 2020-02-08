@@ -97,3 +97,11 @@ combine(imlst_remask) %>% plot(all = T)
 imlst_label <- map(imlst_remask, bwlabel) %>% map(., colorLabels)
 combine(imlst_label[1:9]) %>% plot(all = T)
 
+### Watershed
+
+disc <- makeBrush(101, "disc") %>% (function(.) ./sum(.))
+imlst_bg <- map(imlst_mask, filter2, filter = disc) %>% map(., partial(mask_img, mask = mask3))
+combine(imlst_bg[1:9]) %>% plot(all = T)
+
+imlst_adapt <- map2(imlst_mask, imlst_bg, ~.x > .y + 0.15)
+combine(imlst_adapt[1:9]) %>% plot(all = T)
