@@ -72,8 +72,11 @@ library(tidyverse)
 
 
 library(EBImage)
-mask <- readImage("inst/JellyBellyMask.png")[,,1] %>% erode(., kern = makeBrush(35, "disc"))
-mask3 <- abind::abind(mask, along = 3) %>% abind::abind(., ., ., along = 3) %>% Image(colormode = "Color")
+mask <- readImage("inst/JellyBellyMask.png")[,,1] %>%
+  erode(., kern = makeBrush(35, "disc"))
+mask3 <- abind::abind(mask, along = 3) %>%
+  abind::abind(., ., ., along = 3) %>%
+  Image(colormode = "Color")
 
 imlst <- map(list.files("data", "*.png", full.names = T), readImage)
 
@@ -99,9 +102,54 @@ combine(imlst_label[1:9]) %>% plot(all = T)
 
 ### Watershed
 
-disc <- makeBrush(101, "disc") %>% (function(.) ./sum(.))
+# Jellybeans are different sizes (picture taken at different distances) in
+# different flavors...
+# Large ones are ~250 x 180, medium are 200 x 120, small are 150 x 120 --
+# but mostly a continuous range between the sizes
+
+# First step: get "background" for adaptive thresholding
+# Use a brush that is bigger than the object to detect
+# Since our objects vary in size... 250 is probably close enough?
+
+disc <- makeBrush(251, "disc") %>% (function(.) ./sum(.))
 imlst_bg <- map(imlst_mask, filter2, filter = disc) %>% map(., partial(mask_img, mask = mask3))
 combine(imlst_bg[1:9]) %>% plot(all = T)
 
-imlst_adapt <- map2(imlst_mask, imlst_bg, ~.x > .y + 0.15)
-combine(imlst_adapt[1:9]) %>% plot(all = T)
+# Find all points where the image is more intense than the background plus a fudge factor
+imlst_adapt <- map2(imlst_mask, imlst_bg, ~.x > .y + 0.075) # Could make this adaptive based on variation within the image... that would probably make it overall better...
+combine(imlst_adapt) %>% plot(all = T)
+# At the moment, for some flavors, this gets only the jellybelly label. But that will still work.
+
+
+# This function should combine the results of each color channel to get a single
+# region of intense color
+collapse_colors <- function(im) {
+  tmp <- getFrames(im) # split apart
+  combined_im <- (tmp[[1]] + tmp[[2]] + tmp[[3]]) >= 1 # keep all pixels that are
+                                                      # in the highlighted set in at
+                                                      # least one color channel
+  combined_im
+}
+
+imlst_adapt_mask <- map(imlst_adapt, collapse_colors)
+
+clean_pixel_region <- function(im) {
+  im %>%
+    fillHull() %>%
+    erode(makeBrush(5, "disc")) %>%
+    dilate(makeBrush(35, "disc")) %>%
+    fillHull() %>%
+    erode(makeBrush(25, "disc"))
+}
+
+# Clean up the pixel sets
+highlighted <- map(imlst_adapt_mask, clean_pixel_region)
+
+paint_orig <- map2(highlighted, imlst, ~paintObjects(.x, .y, col = c("black", "white"), opac = c(1, .4)))
+combine(paint_orig) %>% plot(all = T)
+# Some groups merged - mostly light colors or beans with a lot of shine.
+# Need to fix the tabasco image
+# Improvements -
+# 1. Make the adaptive threshold based on the variability in the image instead of a flat 0.075
+# 2. flood fill based on the average of the colors in the image - start at a point closest to the average for flood -filling (that will prevent the label from being an issue)
+
