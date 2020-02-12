@@ -12,7 +12,7 @@ img_data <- tibble(node = imgs, alt = map_chr(imgs, html_attr, "alt"), src = map
   filter(str_detect(alt, "[Bb]ulk") & !str_detect(alt, "Assorted|Mix") & str_detect(alt, "Jelly Beans")) %>%
   mutate(src = str_remove(src, "\\?.*$")) %>%
   mutate(img = map(src, load.image)) %>%
-  mutate(flavor = str_remove(alt, " Jelly Beans -.*ulk") %>% str_remove("[^[:ascii:]]"))
+  mutate(flavor = str_remove(alt, " Jelly Beans -.*ulk") %>% iconv(to="ASCII//TRANSLIT"))
 
 purrr::walk2(img_data$img, paste0("data/", img_data$flavor, ".png"), save.image)
 
@@ -96,26 +96,26 @@ imgs_strip <- imgs
 # Function to quantize an image into a set number of colors
 im_quantize <- function(im, n=256) {
 
-    imdf <- im %>%
-      as.data.frame(wide = 'c')
-    im_cluster <- imdf %>%
-      select(-x, -y) %>%
-      kmeans(n)
+  imdf <- im %>%
+    as.data.frame(wide = 'c')
+  im_cluster <- imdf %>%
+    select(-x, -y) %>%
+    kmeans(n)
 
-    im_centers <- im_cluster$centers %>%
-      tbl_df %>%
-      mutate(label = as.character(row_number()))
+  im_centers <- im_cluster$centers %>%
+    tbl_df %>%
+    mutate(label = as.character(row_number()))
 
-    imdf <- imdf %>%
-      mutate(label = as.character(im_cluster$cluster)) %>%
-      select(x, y, label) %>%
-      left_join(im_centers, by = "label") %>%
-      select(-label) %>%
-      gather(key = 'cc', value = 'value', starts_with("c.")) %>%
-      mutate(cc = str_remove(cc, 'c.') %>% as.integer())
+  imdf <- imdf %>%
+    mutate(label = as.character(im_cluster$cluster)) %>%
+    select(x, y, label) %>%
+    left_join(im_centers, by = "label") %>%
+    select(-label) %>%
+    gather(key = 'cc', value = 'value', starts_with("c.")) %>%
+    mutate(cc = str_remove(cc, 'c.') %>% as.integer())
 
-    imdf %>% as.cimg(dim = dim(im)) #%>% plot()
-  }
+  imdf %>% as.cimg(dim = dim(im)) #%>% plot()
+}
 
 format_color <- function(df, px, n_quantize = NULL) {
   im <- df$img
