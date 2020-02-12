@@ -12,7 +12,7 @@ img_data <- tibble(node = imgs, alt = map_chr(imgs, html_attr, "alt"), src = map
   filter(str_detect(alt, "[Bb]ulk") & !str_detect(alt, "Assorted|Mix") & str_detect(alt, "Jelly Beans")) %>%
   mutate(src = str_remove(src, "\\?.*$")) %>%
   mutate(img = map(src, load.image)) %>%
-  mutate(flavor = str_remove(alt, " Jelly Beans -.*ulk"))
+  mutate(flavor = str_remove(alt, " Jelly Beans -.*ulk") %>% str_remove("[^[:ascii:]]"))
 
 purrr::walk2(img_data$img, paste0("data/", img_data$flavor, ".png"), save.image)
 
