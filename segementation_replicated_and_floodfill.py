@@ -180,14 +180,21 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 ret, sure_fg = cv2.threshold(dist_transform,0.5*dist_transform.max(),1,0)
+
+sure_fg = dilate.copy()
 # visualize
 cv2.imshow('mask', sure_fg)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 # Finding unknown region
+# instead of this as the foreground
+# let's actually use the dilated image above as the sure foreground
+sure_fg = np.uint8(sure_fg)
+sure_fg = dilate.copy()
 sure_fg = np.uint8(sure_fg)
 unknown = cv2.subtract(cv2.convertScaleAbs(sure_bg*255),sure_fg)
+
 # visualize
 cv2.imshow('mask', unknown)
 cv2.waitKey(0)
@@ -212,6 +219,13 @@ img[markers == -1] = [255,0,0]
 
 # visualize
 cv2.imshow('mask', img)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+#Let's color the labels to see the effect
+# plot as colored on a 2d
+img2 = color.label2rgb(markers, bg_label=0)
+cv2.imshow('mask', img2)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
