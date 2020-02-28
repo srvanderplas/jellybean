@@ -7,7 +7,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from scipy import ndimage
-
+import glob
 # read and process
 #step0, step0_5 = fj.read_process_image(r"D:\Jellybean\data\A&W(R) Cream Soda.png")
 
@@ -18,10 +18,24 @@ path_image = r"D:\Jellybean\data\7UP(R).png"
 path_image = r"D:\Jellybean\data\Smoothie Blend.png"
 path_image = r"D:\Jellybean\data\Mango.png"
 path_image = r"D:\Jellybean\data\Birthday Cake Remix(TM).png"
-img_mask,step0, step0_5 = fj.read_process_image(path_image)
 
+# readall the paths
+# readall the paths
+paths = glob.glob("D:\Jellybean\data\*.png")
+
+counter = 0
+for i in paths: 
+    fj.finally_get_the_beans(i)
+    counter = counter + 1
+    print(counter)
+
+
+
+
+
+######################### methods ############################################
 # first method
-
+img_mask,step0, step0_5 = fj.read_process_image(path_image)
 # watershed using random walker
 sure_bg, sure_fg = fj.random_walker_func(img_mask, beta=100, opening_iterations = 1)
 watershed_img, markers = fj.conduct_watershed(step0_5,sure_fg, sure_bg)
@@ -38,9 +52,8 @@ np.unique(markers)
 contours_list = fj.find_markers(markers, cutoff = 900)
 
 
-fj.get_the_beans(step0_5,contours_list, markers)
+stack_images = fj.get_the_beans(step0_5,contours_list, markers)
 # first method ends
-
 
 # second method
 # clean pixel region
@@ -59,6 +72,7 @@ step3 = fj.get_foreground(step0_5,step1, erosion_size = 10, erosion_iter = 2, di
 
 # watershed
 watershed_img, markers = fj.conduct_watershed(step0_5,step3, step2)
+
 
 # second method ends
 
@@ -83,10 +97,10 @@ watershed_img, markers = fj.conduct_watershed(step0_5,step3, step2)
 ##cv2.drawContours(step0_5, contours, -1, (255, 255, 255), 3)
 #e = cv2.fitEllipse(contours[0])
 #cv2.ellipse(step0_5, e, (255,0, 255), 1, cv2.LINE_AA)
-#cv2.imshow('marker 1',contours[0])
+#cv2.imshow('marker 1',np.bitwise_or(img, mask_3d))
 #cv2.waitKey(0)
 #cv2.destroyAllWindows()
-#
+
 ## let's try to get one particular bean
 #bean_4_mask = (markers == 4)
 #
