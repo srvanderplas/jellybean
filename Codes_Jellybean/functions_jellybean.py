@@ -260,4 +260,46 @@ def random_walker_func(img, beta=100, opening_iterations = 1):
     
     return(sure_bg, sure_fg)
     
-        
+def find_markers(markers, cutoff = 900):
+    # define a mask same shape as the markers
+    # instantiate
+    catch_all = []
+    
+    for i in np.unique(markers):
+        if i not in [1,-1]:
+            print(i)
+            mask = np.zeros(markers.shape, dtype="uint8")
+            mask[markers == i] = 255
+            contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            area1 = cv2.contourArea(contours[0])
+            catch = {"contour": i, "area" : area1}
+            catch_all.append(catch)
+    markers_ind = [i["contour"] for i in catch_all if i["area"] > cutoff]
+    return(markers_ind)
+
+
+# write another function to take markers image
+def get_the_beans(image,contours_list, markers):
+    # list
+    capture = []
+    for i in contours_list:
+        # get the mask
+        mask = np.zeros(markers.shape, dtype="uint8")
+        mask[markers == i] = 255
+        # fill holes in the mask
+        mask = cv2.convertScaleAbs(ndimage.binary_fill_holes(mask).astype(float)*255)
+        # detect contour in the mask
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # fit an ellipse to the contour
+        e = cv2.fitEllipse(contours[0])
+        # get  mask define by the ellipse
+#        mask=cv2.ellipse(mask, e, color=(255,255,255), thickness=-1)/255.0
+        # convert the mask to 3d
+        mask_3d = np.dstack([mask.astype(bool)]*3)
+        segmented_bean = image*mask_3d
+        capture.append(segmented_bean)
+        cv2.imshow('marker 1',segmented_bean)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    return(capture)
+            
