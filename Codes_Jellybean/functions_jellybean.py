@@ -10,6 +10,7 @@ import numpy as np
 import cmapy
 import functions_jellybean as fj
 from skimage.segmentation import random_walker
+import imageio
 # define a function to read in the image and apply the masks
 def read_process_image(path): 
     # read in the image, convert to float
@@ -199,16 +200,16 @@ def conduct_watershed(img,sure_fg, sure_bg):
     
     
     # visualize
-    cv2.imshow('watershed 3d', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+#    cv2.imshow('watershed 3d', img)
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
 
     #Let's color the labels to see the effect
     # plot as colored on a 2d
     img2 = color.label2rgb(markers, bg_label=0)
-    cv2.imshow('watershed 2d', img2)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+#    cv2.imshow('watershed 2d', img2)
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
     
     return(img, markers)
  
@@ -296,10 +297,47 @@ def get_the_beans(image,contours_list, markers):
 #        mask=cv2.ellipse(mask, e, color=(255,255,255), thickness=-1)/255.0
         # convert the mask to 3d
         mask_3d = np.dstack([mask.astype(bool)]*3)
-        segmented_bean = image*mask_3d
+        segmented_bean = (image*mask_3d)
+        # make background as white
+        mask_img = segmented_bean[:,:,0] != 0
+        erosion = mask_img == 0
+        segmented_bean[erosion,:] = 1
         capture.append(segmented_bean)
-        cv2.imshow('marker 1',segmented_bean)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+#        cv2.imshow('marker 1',segmented_bean)
+#        cv2.waitKey(0)
+#        cv2.destroyAllWindows()
     return(capture)
+
+# now can we write a function that given just the path will split the image to jellybeans
+def finally_get_the_beans(path,beta=100, opening_iterations = 1,cutoff = 900):
+    path_image = path
+    
+    # get the file name
+    file_name = path_image.split("\\")[-1].split(".")[0]
+    
+    # step 1
+    img_mask,step0, step0_5 = fj.read_process_image(path_image)
+    
+    
+    # watershed using random walker
+    sure_bg, sure_fg = fj.random_walker_func(img_mask, beta, opening_iterations)
+    watershed_img, markers = fj.conduct_watershed(step0_5,sure_fg, sure_bg)
+    
+    
+    # get area using findcontours
+    # remove really small areas one
+    # those would be one with specs
+    contours_list = fj.find_markers(markers, cutoff = 900)
+
+
+    stack_images = fj.get_the_beans(step0_5,contours_list, markers)
+    
+    # now save it
+    counter = 0
+    for j in range(len(stack_images)):
+        counter = counter + 1
+        img = cv2.convertScaleAbs(stack_images[j].copy()*255)
+        file_sub = "D:\\Jellybean\\Split_Jellybeans\\" + file_name + "_"  + str(counter) + ".png"
+        cv2.imwrite(file_sub, img)
+
             
