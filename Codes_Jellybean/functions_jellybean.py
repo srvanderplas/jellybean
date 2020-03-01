@@ -11,6 +11,9 @@ import cmapy
 import functions_jellybean as fj
 from skimage.segmentation import random_walker
 import imageio
+from scipy.stats import norm
+from PIL import Image
+from tqdm import tqdm
 # define a function to read in the image and apply the masks
 def read_process_image(path): 
     # read in the image, convert to float
@@ -199,21 +202,21 @@ def conduct_watershed(img,sure_fg, sure_bg):
     img[markers == -1] = [255,0,0]
     
     
-    # visualize
+#     visualize
 #    cv2.imshow('watershed 3d', img)
 #    cv2.waitKey(0)
 #    cv2.destroyAllWindows()
-
-    #Let's color the labels to see the effect
-    # plot as colored on a 2d
-    img2 = color.label2rgb(markers, bg_label=0)
+#
+#    #Let's color the labels to see the effect
+#    # plot as colored on a 2d
+#    img2 = color.label2rgb(markers, bg_label=0)
 #    cv2.imshow('watershed 2d', img2)
 #    cv2.waitKey(0)
 #    cv2.destroyAllWindows()
     
     return(img, markers)
  
-def random_walker_func(img, beta=100, opening_iterations = 1):
+def random_walker_func(img, beta=100, opening_iterations = 1, cutoff_method = "otsu"):
     # CIE 1931 luminance grayscale conversion
     img = img[:,:,0]*0.0722 + img[:,:,1]*0.7152 + img[:,:,2]*0.2126
 
@@ -225,12 +228,22 @@ def random_walker_func(img, beta=100, opening_iterations = 1):
 
     img = cv2.convertScaleAbs(equ*255)
     
-    # determine thresholds, define markers
-    ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-
-    markers = np.zeros(img.shape, dtype=np.uint)
-    markers[img < ret2] = 1 
-    markers[img > ret2] = 2
+    if cutoff_method == "otsu":
+    
+        # determine thresholds, define markers
+        ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    
+        markers = np.zeros(img.shape, dtype=np.uint)
+        markers[img < ret2] = 1 
+        markers[img > ret2] = 2
+    elif cutoff_method == "normal": 
+        mean_norm = np.mean(img.ravel())
+        sd_norm = np.std(img.ravel())
+        markers = np.zeros(img.shape, dtype=np.uint)
+        markers[img < norm.ppf(0.05, loc=mean_norm, scale=sd_norm)] = 1 
+        markers[img > norm.ppf(0.95, loc=mean_norm, scale=sd_norm)] = 2
+        
+        
     
     # Run random walker algorithm
     labels = random_walker(img, markers, beta, mode='bf')
@@ -268,7 +281,7 @@ def find_markers(markers, cutoff = 900):
     
     for i in np.unique(markers):
         if i not in [1,-1]:
-            print(i)
+#            print(i)
             mask = np.zeros(markers.shape, dtype="uint8")
             mask[markers == i] = 255
             contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -294,14 +307,14 @@ def get_the_beans(image,contours_list, markers):
         # fit an ellipse to the contour
         e = cv2.fitEllipse(contours[0])
         # get  mask define by the ellipse
-#        mask=cv2.ellipse(mask, e, color=(255,255,255), thickness=-1)/255.0
+        mask=cv2.ellipse(mask, e, color=(255,255,255), thickness=-1)/255.0
         # convert the mask to 3d
         mask_3d = np.dstack([mask.astype(bool)]*3)
         segmented_bean = (image*mask_3d)
         # make background as white
-        mask_img = segmented_bean[:,:,0] != 0
-        erosion = mask_img == 0
-        segmented_bean[erosion,:] = 1
+#        mask_img = segmented_bean[:,:,0] != 0
+#        erosion = mask_img == 0
+#        segmented_bean[erosion,:] = 1
         capture.append(segmented_bean)
 #        cv2.imshow('marker 1',segmented_bean)
 #        cv2.waitKey(0)
@@ -309,7 +322,7 @@ def get_the_beans(image,contours_list, markers):
     return(capture)
 
 # now can we write a function that given just the path will split the image to jellybeans
-def finally_get_the_beans(path,beta=100, opening_iterations = 1,cutoff = 900):
+def finally_get_the_beans(path,beta=100, opening_iterations = 2,cutoff = 900,cutoff_method = "otsu"):
     path_image = path
     
     # get the file name
@@ -320,7 +333,7 @@ def finally_get_the_beans(path,beta=100, opening_iterations = 1,cutoff = 900):
     
     
     # watershed using random walker
-    sure_bg, sure_fg = fj.random_walker_func(img_mask, beta, opening_iterations)
+    sure_bg, sure_fg = fj.random_walker_func(img_mask, beta, opening_iterations,cutoff_method = cutoff_method)
     watershed_img, markers = fj.conduct_watershed(step0_5,sure_fg, sure_bg)
     
     
@@ -340,4 +353,125 @@ def finally_get_the_beans(path,beta=100, opening_iterations = 1,cutoff = 900):
         file_sub = "D:\\Jellybean\\Split_Jellybeans\\" + file_name + "_"  + str(counter) + ".png"
         cv2.imwrite(file_sub, img)
 
+
+# define a function to take the paths
+def get_normal_parms(path_obj):
+    paths = path_obj
+    # obj
+    catch_here = []
+    # what are the unique names
+    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
+    # then go through the image name and read in data
+    for it in unique_names: 
+        print(it)
+        # crop and reduce image size
+        stack_img = [Image.open(j).convert('RGB').crop((Image.open(j).convert('RGB').getbbox())) 
+                    for j in paths if it in j]
+        # convert to open cv image
+        open_cv_image = [np.array(i)[:, :, ::-1] for i in stack_img]
+        #convert to hsv
+        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image ]
+        
+        h_vec_app = []
+        s_vec_app = []
+        v_vec_app = []
+        
+        for i in hsv_image:
+#            print(i)
+            # split
+            h, s, v = cv2.split(i)
+        
+            # make an iterable object
+            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+        
+            # remove black pixels
+            chk = [i for i in zip_iter if np.sum(i) > 0]
+        
+            # get the h, s and v vectors
+            h_vec = [i[0] for i in chk]
+            h_vec_app.append(h_vec)
             
+            s_vec = [i[1] for i in chk]
+            s_vec_app.append(s_vec)
+            
+            v_vec = [i[2] for i in chk]
+            v_vec_app.append(v_vec)
+            
+        
+        # get the parms
+
+        h_vec_app = [item for sub in h_vec_app for item in sub]
+        s_vec_app = [item for sub in s_vec_app for item in sub]
+        v_vec_app = [item for sub in v_vec_app for item in sub]
+        
+        h_parms = [np.mean(h_vec_app), np.std(h_vec_app)]
+        s_parms = [np.mean(s_vec_app), np.std(s_vec_app)]
+        v_parms = [np.mean(v_vec_app), np.std(v_vec_app)]
+        
+        catch = {"type": it, "h_parms": h_parms,"s_parms": s_parms, "v_parms": v_parms}
+        
+        catch_here.append(catch)
+    return(catch_here)
+    
+
+def get_normal_parms_seg(path_obj):
+    paths = path_obj
+    # obj
+    catch_here = []
+    # what are the unique names
+#    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
+    # then go through the image name and read in data
+    for it in tqdm(paths): 
+#        print(it)
+        # crop and reduce image size
+        name = [it.split("\\")[-1].split("_")[-0]]
+        stack_img = [Image.open(it).convert('RGB').crop((Image.open(it).convert('RGB').getbbox()))]
+        # convert to open cv image
+        open_cv_image = [cv2.cvtColor(np.array(i), cv2.COLOR_RGB2BGR) for i in stack_img]
+        
+        # histogram equalization of colored images
+        
+        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image]
+#        open_cv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2YCrCb) for i in open_cv_image]
+#        hsv_image = []
+#        for img in open_cv_image: 
+#            y, cr, cb = cv2.split(img)
+#            # Applying equalize Hist operation on Y channel.
+#            y_eq = cv2.equalizeHist(y)
+#            img_y_cr_cb_eq = cv2.merge((y_eq, cr, cb))
+#            img_rgb_eq = cv2.cvtColor(img_y_cr_cb_eq, cv2.COLOR_YCR_CB2BGR)
+#            #convert to hsv
+#            hsv_image_ck = cv2.cvtColor(img_rgb_eq, cv2.COLOR_BGR2HSV)
+#            hsv_image.append(hsv_image_ck)
+        
+        for i in hsv_image:
+#            print(i)
+            # split
+            h, s, v = cv2.split(i)
+        
+            # make an iterable object
+            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+        
+            # remove black pixels
+            chk = [i for i in zip_iter if np.sum(i) > 0]
+        
+            # get the h, s and v vectors
+            h_vec = [i[0] for i in chk]
+#            h_vec_app.append(h_vec)
+            h_parms = [np.mean(h_vec), np.std(h_vec)]
+            s_vec = [i[1] for i in chk]
+            s_parms = [np.mean(s_vec), np.std(s_vec)]
+#            s_vec_app.append(s_vec)
+            v_vec = [i[2] for i in chk]
+            v_parms = [np.mean(v_vec), np.std(v_vec)]
+#            v_vec_app.append(v_vec)
+            
+            catch = {"type": name[0], "h_mean": h_parms[0], "h_std": h_parms[1], 
+                     "s_mean": s_parms[0], "s_std": s_parms[1],"v_mean": v_parms[0], "v_std": v_parms[1]}
+        # get the parms
+
+        
+        
+        
+            catch_here.append(catch)
+    return(catch_here)
