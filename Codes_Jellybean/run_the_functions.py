@@ -8,6 +8,9 @@ import cv2
 import matplotlib.pyplot as plt
 from scipy import ndimage
 import glob
+from PIL import Image
+import pandas as pd
+from  tqdm import tqdm
 # read and process
 #step0, step0_5 = fj.read_process_image(r"D:\Jellybean\data\A&W(R) Cream Soda.png")
 
@@ -18,6 +21,11 @@ path_image = r"D:\Jellybean\data\7UP(R).png"
 path_image = r"D:\Jellybean\data\Smoothie Blend.png"
 path_image = r"D:\Jellybean\data\Mango.png"
 path_image = r"D:\Jellybean\data\Birthday Cake Remix(TM).png"
+path_image = r"D:\Jellybean\data\Sunkist(R) Orange.png"
+path_image = r"D:\Jellybean\data\Strawberry Cheesecake.png"
+path_image = r"D:\Jellybean\data\Very Cherry.png"
+path_image = r"D:\Jellybean\data\Red Apple.png"
+fj.finally_get_the_beans(path_image, beta = 10, opening_iterations = 2, cutoff_method = "otsu")
 
 # readall the paths
 # readall the paths
@@ -25,19 +33,30 @@ paths = glob.glob("D:\Jellybean\data\*.png")
 
 counter = 0
 for i in paths: 
-    fj.finally_get_the_beans(i)
+    fj.finally_get_the_beans(i, beta = 10, opening_iterations = 2, cutoff_method = "otsu")
     counter = counter + 1
     print(counter)
 
+# now we will have to read the split images    
+# read the data in, get images of the same beans - then fit
+# a normal curve and then plot for (h, s and v values)
+paths = glob.glob("D:\Jellybean\Split_Jellybeans\*.png")
 
+# segmented beans
+result = fj.get_normal_parms_seg(paths)
+df_beans = pd.DataFrame(result)
+df_beans.to_csv("segmented_beans_parms.csv", index = False)
 
-
+# categories
+result = fj.get_normal_parms(paths)
+df_beans = pd.DataFrame(result)
+df_beans.to_csv("beans_parms.csv")
 
 ######################### methods ############################################
 # first method
 img_mask,step0, step0_5 = fj.read_process_image(path_image)
 # watershed using random walker
-sure_bg, sure_fg = fj.random_walker_func(img_mask, beta=100, opening_iterations = 1)
+sure_bg, sure_fg = fj.random_walker_func(img_mask, beta=10, opening_iterations = 2)
 watershed_img, markers = fj.conduct_watershed(step0_5,sure_fg, sure_bg)
 # how many markers
 np.unique(markers)
@@ -84,7 +103,7 @@ watershed_img, markers = fj.conduct_watershed(step0_5,step3, step2)
 #
 #segmented_bean = step0_5*mask_3d
 #
-#cv2.imshow('marker 1',segmented_bean)
+#cv2.imshow('marker 1',hsv_image[0])
 #cv2.waitKey(0)
 #cv2.destroyAllWindows()
 #mask = np.zeros(markers.shape, dtype="uint8")
