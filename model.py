@@ -3,6 +3,18 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 import cv2
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import  GridSearchCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import preprocessing
+import xgboost as xgb
+import sklearn.discriminant_analysis as da
+from collections import Counter 
+from sklearn.neighbors import NearestCentroid
+#from joblib import Parallel, delayed
+# hsv features
 seg_beans = pd.read_csv("D:\Jellybean\segmented_beans_parms.csv")
 
 # make additional features
@@ -18,34 +30,72 @@ seg_beans["hsd_ratio"] = seg_beans["h_std"]/seg_beans["s_std"]
 seg_beans["hvd_ratio"] = seg_beans["h_std"]/seg_beans["v_std"]
 seg_beans["svd_ratio"] = seg_beans["s_std"]/seg_beans["v_std"]
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import  GridSearchCV
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn import preprocessing
-import xgboost as xgb
-import sklearn.discriminant_analysis as da
-from collections import Counter 
-from sklearn.neighbors import NearestCentroid
+# yuv features
+seg_beans_yuv = pd.read_csv("D:\Jellybean\segmented_beans_parms_yuv.csv")
+
+# make additional features
+seg_beans_yuv["y_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["y_std"]
+seg_beans_yuv["u_ratio"] = seg_beans_yuv["u_mean"]/seg_beans_yuv["u_std"]
+seg_beans_yuv["v_ratio"] = seg_beans_yuv["v_mean"]/seg_beans_yuv["v_std"]
+
+seg_beans_yuv["yu_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["u_mean"]
+seg_beans_yuv["yv_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["v_mean"]
+seg_beans_yuv["uv_ratio"] = seg_beans_yuv["u_mean"]/seg_beans_yuv["v_mean"]
+
+seg_beans_yuv["yusd_ratio"] = seg_beans_yuv["y_std"]/seg_beans_yuv["u_std"]
+seg_beans_yuv["yvsd_ratio"] = seg_beans_yuv["y_std"]/seg_beans_yuv["v_std"]
+seg_beans_yuv["uvsd_ratio"] = seg_beans_yuv["u_std"]/seg_beans_yuv["v_std"]
+
+# rgb features
+seg_beans_rgb = pd.read_csv("D:\Jellybean\segmented_beans_parms_rgb.csv")
+
+# make additional features
+seg_beans_rgb["b_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["b_std"]
+seg_beans_rgb["g_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["r_ratio"] = seg_beans_rgb["r_mean"]/seg_beans_rgb["r_std"]
+
+seg_beans_rgb["bg_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["g_mean"]
+seg_beans_rgb["br_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["r_mean"]
+seg_beans_rgb["gr_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["r_mean"]
+
+seg_beans_rgb["bgsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
+seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
+
+
+# kmeans rgb
+seg_beans_rgb_kmeans = pd.read_csv("D:\Jellybean\kmeans_rgb_features.csv")
+
+
+# kmeans hsv
+seg_beans_hsv_kmeans = pd.read_csv("D:\Jellybean\kmeans_hsv_features.csv")
+
+
+combined = pd.concat([seg_beans,seg_beans_rgb.iloc[:,1:], seg_beans_yuv.iloc[:,1:], seg_beans_rgb_kmeans, 
+                      seg_beans_hsv_kmeans], axis =1)
+
+
 
 le = preprocessing.LabelEncoder()
 
-train_features = seg_beans[seg_beans.columns[1:]]
-train_labels = seg_beans[seg_beans.columns[0]]
+train_features = combined.iloc[:,1:]
+train_labels = combined[combined.columns[0]]
 le.fit(train_labels)
 train_labels = le.transform(train_labels) 
 le.inverse_transform([1])
 # random forest fittting and tuning
 
-n_estimators = [int(x) for x in np.arange(1,202,10)]
-
+n_estimators = [int(x) for x in np.arange(1,1002,100)]
+#max_depth = np.arange(1, 16,5)
+#max_features = ["auto"]
+#min_samples_leaf = np.arange(1,5)/10
 # Use the random grid to search for best hyperparameters
 # First create the base model to tune
 rf = RandomForestClassifier()
 # Create the random grid
 random_grid = {'n_estimators': n_estimators}
 #               'max_features': max_features,
-#               'max_depth': max_depth,
+#               'max_depth': max_depth}
 #               'min_samples_split': min_samples_split,
 #               'min_samples_leaf': min_samples_leaf,
 #               'bootstrap': bootstrap}
@@ -59,12 +109,18 @@ rf_random.best_params_
 
 
 
+result_imp = np.transpose(pd.DataFrame([train_features.columns, rf_random.best_estimator_.feature_importances_]))
+
+result_imp = result_imp.sort_values(by=[1], ascending = False)
+
+
+
 
 
 # Create the random grid
 lr = rf = RandomForestClassifier()
 max_depth = np.arange(1, 32)
-random_grid = {'n_estimators': [81], 
+random_grid = {'n_estimators': [141], 
 #               'max_features': max_features,
                'max_depth': max_depth}
 #               'min_samples_split': min_samples_split,
@@ -117,7 +173,7 @@ random_grid = {'n_neighbors': np.arange(1,11,1),
 
 knn_random = GridSearchCV(estimator = knn, param_grid = random_grid, cv = 5, verbose=10, n_jobs = 6)
 
-knn_random.fit(train_features, train_labels)
+knn_random.fit(scaled_df, train_labels)
 knn_random.best_estimator_
 knn_random.best_score_
 knn_random.best_params_
@@ -154,14 +210,94 @@ nc_random.best_params_
 
 # test
 # try classifying an image
+
+# we have to convert background of jellybean image to black
+
+# kmeans to get the dominant colors
+# and there proportions
+# read the split jellybean
+
+# write a function to get the cluster centers 
+
+
+    
+obj = k_means_cluster(path, type_img = "HSV")
+
+
+
+
+# have to choose k
+# choose k using gap statistic
+#def optimalK(data, nrefs=3, maxClusters=15):
+#    """
+#    Calculates KMeans optimal K using Gap Statistic from Tibshirani, Walther, Hastie
+#    Params:
+#        data: ndarry of shape (n_samples, n_features)
+#        nrefs: number of sample reference datasets to create
+#        maxClusters: Maximum number of clusters to test for
+#    Returns: (gaps, optimalK)
+#    """
+#    gaps = np.zeros((len(range(1, maxClusters)),))
+#    resultsdf = pd.DataFrame({'clusterCount':[], 'gap':[]})
+#    for gap_index, k in enumerate(range(1, maxClusters)):
+#
+#        # Holder for reference dispersion results
+#        refDisps = np.zeros(nrefs)
+#
+#        # For n references, generate random sample and perform kmeans getting resulting dispersion of each loop
+#        for i in range(nrefs):
+#            
+#            # Create new random reference set
+#            randomReference = np.random.random_sample(size=data.shape)
+#            
+#            # Fit to it
+#            km = KMeans(k)
+#            km.fit(randomReference)
+#            
+#            refDisp = km.inertia_
+#            refDisps[i] = refDisp
+#
+#        # Fit cluster to original data and create dispersion
+#        km = KMeans(k)
+#        km.fit(data)
+#        
+#        origDisp = km.inertia_
+#
+#        # Calculate gap statistic
+#        gap = np.log(np.mean(refDisps)) - np.log(origDisp)
+#
+#        # Assign this loop's gap statistic to gaps
+#        gaps[gap_index] = gap
+#        
+#        resultsdf = resultsdf.append({'clusterCount':k, 'gap':gap}, ignore_index=True)
+#
+#    return (gaps.argmax() + 1, resultsdf)  # Plus 1 because index of 0 means 1 cluster is optimal, index 2 = 3 clusters are optimal
+#
+#k, gapdf = optimalK(data_kmeans, nrefs=5, maxClusters=15)
+
+
+
+
+
 path = r"D:\Jellybean\Test_Images\Tutti-Fruitti.png"
 path = r"D:\Jellybean\Test_Images\Strawberry-Jam-Signature.png"
 path = r"D:\Jellybean\Test_Images\Red-Apple-Signature-ns_fg.png"
 path = r"D:\Jellybean\Test_Images\Watermelon-Signature-ns_fg.png"
 test_image = Image.open(path).convert('RGB').crop((Image.open(path).convert('RGB').getbbox())) 
-                    
-# convert to open cv image
-open_cv_image = np.array(test_image)[:, :, ::-1]
+open_cv_image = np.array(test_image)[:, :, ::-1]     
+
+
+
+
+#test_image = cv2.imread(r"D:\Jellybean\check_ff.png",0)
+##
+##
+#light_coat = flood_fill(test_image, (2, 2), 0, tolerance=10)
+##light_coat = flood_fill(light_coat, (2, 2), 0, tolerance=10)
+#cv2.imshow('mask', light_coat)
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
+
 #convert to hsv
 hsv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2HSV)
 
@@ -204,11 +340,13 @@ le.inverse_transform([rf_random.best_estimator_.predict(test_df)])
 # elastic  net
 le.inverse_transform([lr_random.best_estimator_.predict(test_df)])
 # knn
-le.inverse_transform([knn_random.best_estimator_.predict(test_df)])
+scaled_df = scaler.fit_transform(test_df)
+scaled_df = pd.DataFrame(scaled_df, columns=names)
+le.inverse_transform([knn_random.best_estimator_.predict(scaled_df)])
 #qda
-le.inverse_transform([qda_random.best_estimator_.predict(test_df)])
+le.inverse_transform([qda_random.best_estimator_.predict(scaled_df)])
 # nearest centroid
-le.inverse_transform([nc_random.best_estimator_.predict(test_df)])
+le.inverse_transform([nc_random.best_estimator_.predict(scaled_df)])
 
 ## Create the random grid
 ##max_depth = np.arange(1, 32)
