@@ -58,25 +58,25 @@ df_beans.to_csv("segmented_beans_parms.csv", index = False)
 
 # segmented beans
 #result = fj.get_normal_parms_seg_rgb(paths)
-result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.get_normal_parms_seg_rgb_pr)(i, gamma = 2) for i in paths)
+result = Parallel(n_jobs=6, verbose = 10, backend = "loky")(delayed(fj.get_normal_parms_seg_rgb_pr)(i, gamma = 2) for i in paths)
 df_beans = pd.DataFrame(result)
 df_beans.to_csv("segmented_beans_parms_rgb.csv", index = False)
 
 # segmented beans
 #result = fj.get_normal_parms_seg_yuv(paths)
-result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.get_normal_parms_seg_yuv_pr)(i, gamma = 2) for i in paths)
+result = Parallel(n_jobs=6, verbose = 10, backend = "loky")(delayed(fj.get_normal_parms_seg_yuv_pr)(i, gamma = 2) for i in paths)
 df_beans = pd.DataFrame(result)
 df_beans.to_csv("segmented_beans_parms_yuv.csv", index = False)
 
 # k = 3
 # color features - kmeans - rgb
-result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster_RGB)(i, n_clusters = 3, gamma = 2)
+result = Parallel(n_jobs=6, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster_RGB)(i, n_clusters = 3, gamma = 2)
          for i in paths)
 df_beans = pd.DataFrame(result)
 df_beans.to_csv("kmeans_rgb_features.csv", index = False)
 
 # color features - kmeans - hsv
-result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster_HSV)(i, type_img = "HSV",n_clusters = 3,
+result = Parallel(n_jobs=6, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster_HSV)(i, type_img = "HSV",n_clusters = 3,
                   gamma = 2)for i in paths)
 df_beans = pd.DataFrame(result)
 df_beans.to_csv("kmeans_hsv_features.csv", index = False)
