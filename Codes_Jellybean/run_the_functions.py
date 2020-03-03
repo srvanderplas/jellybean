@@ -11,21 +11,25 @@ import glob
 from PIL import Image
 import pandas as pd
 from  tqdm import tqdm
+from collections import Counter
+from joblib import Parallel, delayed
+
+
 # read and process
 #step0, step0_5 = fj.read_process_image(r"D:\Jellybean\data\A&W(R) Cream Soda.png")
 
 #step0, step0_5 = fj.read_process_image(r"D:\Jellybean\data\7UP(R).png")
-path_image = r"D:\Jellybean\data\Cappuccino.png"
-path_image = r"D:\Jellybean\data\A&W(R) Cream Soda.png"
-path_image = r"D:\Jellybean\data\7UP(R).png"
-path_image = r"D:\Jellybean\data\Smoothie Blend.png"
-path_image = r"D:\Jellybean\data\Mango.png"
-path_image = r"D:\Jellybean\data\Birthday Cake Remix(TM).png"
-path_image = r"D:\Jellybean\data\Sunkist(R) Orange.png"
-path_image = r"D:\Jellybean\data\Strawberry Cheesecake.png"
-path_image = r"D:\Jellybean\data\Very Cherry.png"
-path_image = r"D:\Jellybean\data\Red Apple.png"
-fj.finally_get_the_beans(path_image, beta = 10, opening_iterations = 2, cutoff_method = "otsu")
+#path_image = r"D:\Jellybean\data\Cappuccino.png"
+#path_image = r"D:\Jellybean\data\A&W(R) Cream Soda.png"
+#path_image = r"D:\Jellybean\data\7UP(R).png"
+#path_image = r"D:\Jellybean\data\Smoothie Blend.png"
+#path_image = r"D:\Jellybean\data\Mango.png"
+#path_image = r"D:\Jellybean\data\Birthday Cake Remix(TM).png"
+#path_image = r"D:\Jellybean\data\Sunkist(R) Orange.png"
+#path_image = r"D:\Jellybean\data\Strawberry Cheesecake.png"
+#path_image = r"D:\Jellybean\data\Very Cherry.png"
+#path_image = r"D:\Jellybean\data\Red Apple.png"
+#fj.finally_get_the_beans(path_image, beta = 10, opening_iterations = 2, cutoff_method = "otsu")
 
 # readall the paths
 # readall the paths
@@ -43,9 +47,64 @@ for i in paths:
 paths = glob.glob("D:\Jellybean\Split_Jellybeans\*.png")
 
 # segmented beans
-result = fj.get_normal_parms_seg(paths)
+#result = fj.get_normal_parms_seg(paths)
+result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.get_normal_parms_seg_pr)(i, gamma = 2) for i in paths)
 df_beans = pd.DataFrame(result)
 df_beans.to_csv("segmented_beans_parms.csv", index = False)
+
+
+# segmented beans
+#result = fj.get_normal_parms_seg_rgb(paths)
+result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.get_normal_parms_seg_rgb_pr)(i, gamma = 2) for i in paths)
+df_beans = pd.DataFrame(result)
+df_beans.to_csv("segmented_beans_parms_rgb.csv", index = False)
+
+# segmented beans
+#result = fj.get_normal_parms_seg_yuv(paths)
+result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.get_normal_parms_seg_yuv_pr)(i, gamma = 2) for i in paths)
+df_beans = pd.DataFrame(result)
+df_beans.to_csv("segmented_beans_parms_yuv.csv", index = False)
+
+# k = 3
+# color features - kmeans - rgb
+result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster_RGB)(i, n_clusters = 3, gamma = 2)
+         for i in paths)
+df_beans = pd.DataFrame(result)
+df_beans.to_csv("kmeans_rgb_features.csv", index = False)
+
+# color features - kmeans - hsv
+result = Parallel(n_jobs=7, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster_HSV)(i, type_img = "HSV",n_clusters = 3,
+                  gamma = 2)for i in paths)
+df_beans = pd.DataFrame(result)
+df_beans.to_csv("kmeans_hsv_features.csv", index = False)
+
+## k = 2
+## color features - kmeans - rgb
+#result = Parallel(n_jobs=6, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster)(i, n_clusters = 2) for i in paths)
+#df_beans = pd.DataFrame(result)
+#df_beans.to_csv("kmeans_rgb_features.csv", index = False)
+#
+## color features - kmeans - hsv
+#result = Parallel(n_jobs=6, verbose = 10, backend = "loky")(delayed(fj.k_means_cluster)(i, type_img = "HSV",n_clusters = 2)
+#                     for i in paths)
+#df_beans = pd.DataFrame(result)
+#df_beans.to_csv("kmeans_hsv_features.csv", index = False)
+
+
+## k = 3
+## color features - kmeans - rgb
+#result = Parallel(n_jobs=6, verbose = 10)(delayed(fj.k_means_cluster,  backend = "loky")(i, n_clusters = 3) for i in paths)
+#df_beans = pd.DataFrame(result)
+#df_beans.to_csv("kmeans_rgb_features.csv", index = False)
+#
+## color features - kmeans - hsv
+#result = Parallel(n_jobs=6, verbose = 10)(delayed(fj.k_means_cluster,  backend = "loky")(i, type_img = "HSV",n_clusters = 3)
+#                     for i in paths)
+#df_beans = pd.DataFrame(result)
+#df_beans.to_csv("kmeans_hsv_features.csv", index = False)
+#
+
+
 
 # categories
 result = fj.get_normal_parms(paths)
@@ -145,4 +204,3 @@ for channel,col in enumerate(color):
     plt.ylim([0,2000])
 plt.title('Histogram for color scale picture')
 plt.show()
-
