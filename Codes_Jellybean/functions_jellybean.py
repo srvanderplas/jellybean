@@ -415,27 +415,28 @@ def get_normal_parms(path_obj):
         catch = {"type": it, "h_parms": h_parms,"s_parms": s_parms, "v_parms": v_parms}
         
         catch_here.append(catch)
-    return(catch_here)
-    
+    return(catch)
 
-def get_normal_parms_seg(path_obj):
-    paths = path_obj
+
+def get_normal_parms_seg_pr(path_obj, gamma = 2):
+
     # obj
-    catch_here = []
+#    catch_here = []
     # what are the unique names
 #    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
     # then go through the image name and read in data
-    for it in tqdm(paths): 
 #        print(it)
         # crop and reduce image size
-        name = [it.split("\\")[-1].split("_")[-0]]
-        stack_img = [Image.open(it).convert('RGB').crop((Image.open(it).convert('RGB').getbbox()))]
+    name = [path_obj.split("\\")[-1].split("_")[-0]]
+    stack_img = Image.open(path_obj).convert('RGB').crop((Image.open(path_obj).convert('RGB').getbbox()))
         # convert to open cv image
-        open_cv_image = [cv2.cvtColor(np.array(i), cv2.COLOR_RGB2BGR) for i in stack_img]
-        
+    open_cv_image = cv2.cvtColor(np.array(stack_img), cv2.COLOR_RGB2BGR)
+    open_cv_image = open_cv_image[:, :, ::-1]
+    open_cv_image = adjust_gamma(open_cv_image, gamma) 
+    open_cv_image = open_cv_image[:, :, ::-1]
         # histogram equalization of colored images
         
-        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image]
+    hsv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2HSV)
 #        open_cv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2YCrCb) for i in open_cv_image]
 #        hsv_image = []
 #        for img in open_cv_image: 
@@ -448,57 +449,123 @@ def get_normal_parms_seg(path_obj):
 #            hsv_image_ck = cv2.cvtColor(img_rgb_eq, cv2.COLOR_BGR2HSV)
 #            hsv_image.append(hsv_image_ck)
         
-        for i in hsv_image:
 #            print(i)
             # split
-            h, s, v = cv2.split(i)
+    h, s, v = cv2.split(hsv_image)
         
             # make an iterable object
-            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+    zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
         
             # remove black pixels
-            chk = [i for i in zip_iter if np.sum(i) > 0]
+    chk = [i for i in zip_iter if np.sum(i) > 0]
         
             # get the h, s and v vectors
-            h_vec = [i[0] for i in chk]
+    h_vec = [i[0] for i in chk]
 #            h_vec_app.append(h_vec)
-            h_parms = [np.mean(h_vec), np.std(h_vec)]
-            s_vec = [i[1] for i in chk]
-            s_parms = [np.mean(s_vec), np.std(s_vec)]
-#            s_vec_app.append(s_vec)
-            v_vec = [i[2] for i in chk]
-            v_parms = [np.mean(v_vec), np.std(v_vec)]
+    h_parms = [np.mean(h_vec), np.std(h_vec)]
+    s_vec = [i[1] for i in chk]
+    s_parms = [np.mean(s_vec), np.std(s_vec)]
+#           s_vec_app.append(s_vec)
+    v_vec = [i[2] for i in chk]
+    v_parms = [np.mean(v_vec), np.std(v_vec)]
 #            v_vec_app.append(v_vec)
             
-            catch = {"type": name[0], "h_mean": h_parms[0], "h_std": h_parms[1], 
+    catch = {"type": name[0], "h_mean": h_parms[0], "h_std": h_parms[1], 
                      "s_mean": s_parms[0], "s_std": s_parms[1],"v_mean": v_parms[0], "v_std": v_parms[1]}
         # get the parms
 
         
         
         
-            catch_here.append(catch)
-    return(catch_here)
+#            catch_here.append(catch)
+    return(catch)
     
+    
+#
+#def get_normal_parms_seg(path_obj, gamma = 2):
+#    paths = path_obj
+#    # obj
+##    catch_here = []
+#    # what are the unique names
+##    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
+#    # then go through the image name and read in data
+#    for it in tqdm(paths): 
+##        print(it)
+#        # crop and reduce image size
+#        name = [it.split("\\")[-1].split("_")[-0]]
+#        stack_img = [Image.open(it).convert('RGB').crop((Image.open(it).convert('RGB').getbbox()))]
+#        # convert to open cv image
+#        open_cv_image = [cv2.cvtColor(np.array(i), cv2.COLOR_RGB2BGR) for i in stack_img]
+#        open_cv_image = open_cv_image[:, :, ::-1]
+#        open_cv_image = [adjust_gamma(i, gamma) for i in open_cv_image]
+#        open_cv_image = open_cv_image[:, :, ::-1]
+#        # histogram equalization of colored images
+#        
+#        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image]
+##        open_cv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2YCrCb) for i in open_cv_image]
+##        hsv_image = []
+##        for img in open_cv_image: 
+##            y, cr, cb = cv2.split(img)
+##            # Applying equalize Hist operation on Y channel.
+##            y_eq = cv2.equalizeHist(y)
+##            img_y_cr_cb_eq = cv2.merge((y_eq, cr, cb))
+##            img_rgb_eq = cv2.cvtColor(img_y_cr_cb_eq, cv2.COLOR_YCR_CB2BGR)
+##            #convert to hsv
+##            hsv_image_ck = cv2.cvtColor(img_rgb_eq, cv2.COLOR_BGR2HSV)
+##            hsv_image.append(hsv_image_ck)
+#        
+#        for i in hsv_image:
+##            print(i)
+#            # split
+#            h, s, v = cv2.split(i)
+#        
+#            # make an iterable object
+#            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+#        
+#            # remove black pixels
+#            chk = [i for i in zip_iter if np.sum(i) > 0]
+#        
+#            # get the h, s and v vectors
+#            h_vec = [i[0] for i in chk]
+##            h_vec_app.append(h_vec)
+#            h_parms = [np.mean(h_vec), np.std(h_vec)]
+#            s_vec = [i[1] for i in chk]
+#            s_parms = [np.mean(s_vec), np.std(s_vec)]
+##            s_vec_app.append(s_vec)
+#            v_vec = [i[2] for i in chk]
+#            v_parms = [np.mean(v_vec), np.std(v_vec)]
+##            v_vec_app.append(v_vec)
+#            
+#            catch = {"type": name[0], "h_mean": h_parms[0], "h_std": h_parms[1], 
+#                     "s_mean": s_parms[0], "s_std": s_parms[1],"v_mean": v_parms[0], "v_std": v_parms[1]}
+#        # get the parms
+#
+#        
+#        
+#        
+##            catch_here.append(catch)
+#    return(catch)
+# 
+    
+def get_normal_parms_seg_rgb_pr(path_obj, gamma = 2):
 
-def get_normal_parms_seg_rgb(path_obj):
-    paths = path_obj
     # obj
-    catch_here = []
+#    catch_here = []
     # what are the unique names
 #    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
     # then go through the image name and read in data
-    for it in tqdm(paths): 
 #        print(it)
         # crop and reduce image size
-        name = [it.split("\\")[-1].split("_")[-0]]
-        stack_img = [Image.open(it).convert('RGB').crop((Image.open(it).convert('RGB').getbbox()))]
+    name = [path_obj.split("\\")[-1].split("_")[-0]]
+    stack_img = Image.open(path_obj).convert('RGB').crop((Image.open(path_obj).convert('RGB').getbbox()))
         # convert to open cv image
-        open_cv_image = [cv2.cvtColor(np.array(i), cv2.COLOR_RGB2BGR) for i in stack_img]
-        
+    open_cv_image = cv2.cvtColor(np.array(stack_img), cv2.COLOR_RGB2BGR)
+    open_cv_image = open_cv_image[:, :, ::-1]
+    open_cv_image = adjust_gamma(open_cv_image, gamma) 
+    open_cv_image = open_cv_image[:, :, ::-1]
         # histogram equalization of colored images
         
-#        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image]
+#    hsv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2HSV)
 #        open_cv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2YCrCb) for i in open_cv_image]
 #        hsv_image = []
 #        for img in open_cv_image: 
@@ -511,58 +578,120 @@ def get_normal_parms_seg_rgb(path_obj):
 #            hsv_image_ck = cv2.cvtColor(img_rgb_eq, cv2.COLOR_BGR2HSV)
 #            hsv_image.append(hsv_image_ck)
         
-        for i in open_cv_image:
 #            print(i)
             # split
-            h, s, v = cv2.split(i)
+    h, s, v = cv2.split(open_cv_image)
         
             # make an iterable object
-            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+    zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
         
             # remove black pixels
-            chk = [i for i in zip_iter if np.sum(i) > 0]
+    chk = [i for i in zip_iter if np.sum(i) > 0]
         
             # get the h, s and v vectors
-            h_vec = [i[0] for i in chk]
+    h_vec = [i[0] for i in chk]
 #            h_vec_app.append(h_vec)
-            h_parms = [np.mean(h_vec), np.std(h_vec)]
-            s_vec = [i[1] for i in chk]
-            s_parms = [np.mean(s_vec), np.std(s_vec)]
-#            s_vec_app.append(s_vec)
-            v_vec = [i[2] for i in chk]
-            v_parms = [np.mean(v_vec), np.std(v_vec)]
+    h_parms = [np.mean(h_vec), np.std(h_vec)]
+    s_vec = [i[1] for i in chk]
+    s_parms = [np.mean(s_vec), np.std(s_vec)]
+#           s_vec_app.append(s_vec)
+    v_vec = [i[2] for i in chk]
+    v_parms = [np.mean(v_vec), np.std(v_vec)]
 #            v_vec_app.append(v_vec)
             
-            catch = {"type": name[0], "b_mean": h_parms[0], "b_std": h_parms[1], 
+    catch = {"type": name[0], "b_mean": h_parms[0], "b_std": h_parms[1], 
                      "g_mean": s_parms[0], "g_std": s_parms[1],"r_mean": v_parms[0], "r_std": v_parms[1]}
         # get the parms
 
         
         
         
-            catch_here.append(catch)
-    return(catch_here)
+#            catch_here.append(catch)
+    return(catch)
+        
+#
+#def get_normal_parms_seg_rgb(path_obj):
+#    paths = path_obj
+#    # obj
+#    catch_here = []
+#    # what are the unique names
+##    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
+#    # then go through the image name and read in data
+#    for it in tqdm(paths): 
+##        print(it)
+#        # crop and reduce image size
+#        name = [it.split("\\")[-1].split("_")[-0]]
+#        stack_img = [Image.open(it).convert('RGB').crop((Image.open(it).convert('RGB').getbbox()))]
+#        # convert to open cv image
+#        open_cv_image = [cv2.cvtColor(np.array(i), cv2.COLOR_RGB2BGR) for i in stack_img]
+#        
+#        # histogram equalization of colored images
+#        
+##        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image]
+##        open_cv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2YCrCb) for i in open_cv_image]
+##        hsv_image = []
+##        for img in open_cv_image: 
+##            y, cr, cb = cv2.split(img)
+##            # Applying equalize Hist operation on Y channel.
+##            y_eq = cv2.equalizeHist(y)
+##            img_y_cr_cb_eq = cv2.merge((y_eq, cr, cb))
+##            img_rgb_eq = cv2.cvtColor(img_y_cr_cb_eq, cv2.COLOR_YCR_CB2BGR)
+##            #convert to hsv
+##            hsv_image_ck = cv2.cvtColor(img_rgb_eq, cv2.COLOR_BGR2HSV)
+##            hsv_image.append(hsv_image_ck)
+#        
+#        for i in open_cv_image:
+##            print(i)
+#            # split
+#            h, s, v = cv2.split(i)
+#        
+#            # make an iterable object
+#            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+#        
+#            # remove black pixels
+#            chk = [i for i in zip_iter if np.sum(i) > 0]
+#        
+#            # get the h, s and v vectors
+#            h_vec = [i[0] for i in chk]
+##            h_vec_app.append(h_vec)
+#            h_parms = [np.mean(h_vec), np.std(h_vec)]
+#            s_vec = [i[1] for i in chk]
+#            s_parms = [np.mean(s_vec), np.std(s_vec)]
+##            s_vec_app.append(s_vec)
+#            v_vec = [i[2] for i in chk]
+#            v_parms = [np.mean(v_vec), np.std(v_vec)]
+##            v_vec_app.append(v_vec)
+#            
+#            catch = {"type": name[0], "b_mean": h_parms[0], "b_std": h_parms[1], 
+#                     "g_mean": s_parms[0], "g_std": s_parms[1],"r_mean": v_parms[0], "r_std": v_parms[1]}
+#        # get the parms
+#
+#        
+#        
+#        
+#            catch_here.append(catch)
+#    return(catch_here)
     
-    
+def get_normal_parms_seg_yuv_pr(path_obj, gamma = 2):
 
-def get_normal_parms_seg_yuv(path_obj):
-    paths = path_obj
     # obj
-    catch_here = []
+#    catch_here = []
     # what are the unique names
 #    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
     # then go through the image name and read in data
-    for it in tqdm(paths): 
 #        print(it)
         # crop and reduce image size
-        name = [it.split("\\")[-1].split("_")[-0]]
-        stack_img = [Image.open(it).convert('RGB').crop((Image.open(it).convert('RGB').getbbox()))]
+    name = [path_obj.split("\\")[-1].split("_")[-0]]
+    stack_img = Image.open(path_obj).convert('RGB').crop((Image.open(path_obj).convert('RGB').getbbox()))
         # convert to open cv image
-        open_cv_image = [cv2.cvtColor(np.array(i), cv2.COLOR_RGB2YUV) for i in stack_img]
-        
+    open_cv_image = cv2.cvtColor(np.array(stack_img), cv2.COLOR_RGB2BGR)
+    open_cv_image = open_cv_image[:, :, ::-1]
+    open_cv_image = adjust_gamma(open_cv_image, gamma) 
+#    open_cv_image = open_cv_image[:, :, ::-1]
+    open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2YUV)
         # histogram equalization of colored images
         
-#        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image]
+#    hsv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2HSV)
 #        open_cv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2YCrCb) for i in open_cv_image]
 #        hsv_image = []
 #        for img in open_cv_image: 
@@ -575,41 +704,103 @@ def get_normal_parms_seg_yuv(path_obj):
 #            hsv_image_ck = cv2.cvtColor(img_rgb_eq, cv2.COLOR_BGR2HSV)
 #            hsv_image.append(hsv_image_ck)
         
-        for i in open_cv_image:
 #            print(i)
             # split
-            h, s, v = cv2.split(i)
+    h, s, v = cv2.split(open_cv_image)
         
             # make an iterable object
-            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+    zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
         
             # remove black pixels
-            chk = [i for i in zip_iter if np.sum(i) > 0]
+    chk = [i for i in zip_iter if np.sum(i) > 0]
         
             # get the h, s and v vectors
-            h_vec = [i[0] for i in chk]
+    h_vec = [i[0] for i in chk]
 #            h_vec_app.append(h_vec)
-            h_parms = [np.mean(h_vec), np.std(h_vec)]
-            s_vec = [i[1] for i in chk]
-            s_parms = [np.mean(s_vec), np.std(s_vec)]
-#            s_vec_app.append(s_vec)
-            v_vec = [i[2] for i in chk]
-            v_parms = [np.mean(v_vec), np.std(v_vec)]
+    h_parms = [np.mean(h_vec), np.std(h_vec)]
+    s_vec = [i[1] for i in chk]
+    s_parms = [np.mean(s_vec), np.std(s_vec)]
+#           s_vec_app.append(s_vec)
+    v_vec = [i[2] for i in chk]
+    v_parms = [np.mean(v_vec), np.std(v_vec)]
 #            v_vec_app.append(v_vec)
             
-            catch = {"type": name[0], "y_mean": h_parms[0], "y_std": h_parms[1], 
+    catch = {"type": name[0], "y_mean": h_parms[0], "y_std": h_parms[1], 
                      "u_mean": s_parms[0], "u_std": s_parms[1],"v_mean": v_parms[0], "v_std": v_parms[1]}
         # get the parms
 
         
         
         
-            catch_here.append(catch)
-    return(catch_here)
-    
+#            catch_here.append(catch)
+    return(catch)
+            
+#
+#def get_normal_parms_seg_yuv(path_obj):
+#    paths = path_obj
+#    # obj
+#    catch_here = []
+#    # what are the unique names
+##    unique_names = np.unique([i.split("\\")[-1].split("_")[-0] for i in paths])
+#    # then go through the image name and read in data
+#    for it in tqdm(paths): 
+##        print(it)
+#        # crop and reduce image size
+#        name = [it.split("\\")[-1].split("_")[-0]]
+#        stack_img = [Image.open(it).convert('RGB').crop((Image.open(it).convert('RGB').getbbox()))]
+#        # convert to open cv image
+#        open_cv_image = [cv2.cvtColor(np.array(i), cv2.COLOR_RGB2YUV) for i in stack_img]
+#        
+#        # histogram equalization of colored images
+#        
+##        hsv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2HSV) for i in open_cv_image]
+##        open_cv_image = [cv2.cvtColor(i, cv2.COLOR_BGR2YCrCb) for i in open_cv_image]
+##        hsv_image = []
+##        for img in open_cv_image: 
+##            y, cr, cb = cv2.split(img)
+##            # Applying equalize Hist operation on Y channel.
+##            y_eq = cv2.equalizeHist(y)
+##            img_y_cr_cb_eq = cv2.merge((y_eq, cr, cb))
+##            img_rgb_eq = cv2.cvtColor(img_y_cr_cb_eq, cv2.COLOR_YCR_CB2BGR)
+##            #convert to hsv
+##            hsv_image_ck = cv2.cvtColor(img_rgb_eq, cv2.COLOR_BGR2HSV)
+##            hsv_image.append(hsv_image_ck)
+#        
+#        for i in open_cv_image:
+##            print(i)
+#            # split
+#            h, s, v = cv2.split(i)
+#        
+#            # make an iterable object
+#            zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+#        
+#            # remove black pixels
+#            chk = [i for i in zip_iter if np.sum(i) > 0]
+#        
+#            # get the h, s and v vectors
+#            h_vec = [i[0] for i in chk]
+##            h_vec_app.append(h_vec)
+#            h_parms = [np.mean(h_vec), np.std(h_vec)]
+#            s_vec = [i[1] for i in chk]
+#            s_parms = [np.mean(s_vec), np.std(s_vec)]
+##            s_vec_app.append(s_vec)
+#            v_vec = [i[2] for i in chk]
+#            v_parms = [np.mean(v_vec), np.std(v_vec)]
+##            v_vec_app.append(v_vec)
+#            
+#            catch = {"type": name[0], "y_mean": h_parms[0], "y_std": h_parms[1], 
+#                     "u_mean": s_parms[0], "u_std": s_parms[1],"v_mean": v_parms[0], "v_std": v_parms[1]}
+#        # get the parms
+#
+#        
+#        
+#        
+#            catch_here.append(catch)
+#    return(catch_here)
+#    
     
 
-def k_means_cluster(path, n_clusters = 3, type_img = "RGB"):
+def k_means_cluster_RGB(path, n_clusters = 3, type_img = "RGB", gamma = 1):
 
 #    sp_jb = cv2.imread(path)
 #    cv2.imshow('mask', sp_jb)
@@ -618,6 +809,7 @@ def k_means_cluster(path, n_clusters = 3, type_img = "RGB"):
 
     stack_img = Image.open(path).convert(type_img).crop((Image.open(path).convert(type_img).getbbox())) 
     rgb_image = np.array(stack_img)
+    rgb_image = adjust_gamma(rgb_image, gamma) 
     r, g, b = cv2.split(rgb_image)
 
     zip_iter = zip(r.ravel(),g.ravel(),b.ravel())
@@ -683,6 +875,85 @@ def k_means_cluster(path, n_clusters = 3, type_img = "RGB"):
 #             "cluster_5_prop"+ type_img: cluster_5_prop}
     
     return(catch)
+
+
+def k_means_cluster_HSV(path, n_clusters = 3, type_img = "RGB", gamma = 1):
+
+#    sp_jb = cv2.imread(path)
+#    cv2.imshow('mask', sp_jb)
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+    stack_img = Image.open(path).convert(type_img).crop((Image.open(path).convert(type_img).getbbox())) 
+    rgb_image = np.array(stack_img)
+    rgb_image = adjust_gamma(rgb_image, gamma)
+    rgb_image = rgb_image[:, :, ::-1]
+    rgb_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2HSV)
+    r, g, b = cv2.split(rgb_image)
+
+    zip_iter = zip(r.ravel(),g.ravel(),b.ravel())
+    chk = [i for i in zip_iter if np.sum(i) > 0]
+
+    data_kmeans = np.array(chk)
+    kmeans = KMeans(n_clusters=3, random_state=0).fit(data_kmeans)
+    catch1 = kmeans.cluster_centers_[0]
+    catch2 = kmeans.cluster_centers_[1]
+    catch3 = kmeans.cluster_centers_[2]
+#    catch4 = kmeans.cluster_centers_[3]
+#    catch5 = kmeans.cluster_centers_[4]
+    cluster_1_r = catch1[0]
+    cluster_1_g = catch1[1]
+    cluster_1_b = catch1[2]
+    cluster_2_r = catch2[0]
+    cluster_2_g = catch2[1]
+    cluster_2_b = catch2[2]
+    cluster_3_r = catch3[0]
+    cluster_3_g = catch3[1]
+    cluster_3_b = catch3[2]
+#    cluster_4_r = catch4[0]
+#    cluster_4_g = catch4[1]
+#    cluster_4_b = catch4[2]
+#    cluster_5_r = catch5[0]
+#    cluster_5_g = catch5[1]
+#    cluster_5_b = catch5[2]
+#    
+    # cluster proportions
+    weights = [Counter(kmeans.labels_)[i]/len(chk) for i in range(3)]
+    cluster_1_prop = weights[0]
+    cluster_2_prop = weights[1]
+    cluster_3_prop = weights[2]
+#    cluster_4_prop = weights[3]
+#    cluster_5_prop = weights[4]
+    
+#    catch = {"cluster_1_r" + type_img: cluster_1_r,"cluster_1_g"+ type_img: cluster_1_g,
+#             "cluster_1_b"+ type_img: cluster_1_b,
+#             "cluster_1_prop"+ type_img: cluster_1_prop}
+
+#    catch = {"cluster_1_r" + type_img: cluster_1_r,"cluster_1_g"+ type_img: cluster_1_g,
+#             "cluster_1_b"+ type_img: cluster_1_b, 
+#             "cluster_2_r"+ type_img: cluster_2_r,"cluster_2_g"+ type_img: cluster_2_g,
+#             "cluster_2_b"+ type_img: cluster_2_b, 
+#             "cluster_1_prop"+ type_img: cluster_1_prop,
+#             "cluster_2_prop"+ type_img: cluster_2_prop}
+
+    
+    type_img = "HSV"
+    catch = {"cluster_1_r" + type_img: cluster_1_r,"cluster_1_g"+ type_img: cluster_1_g,
+             "cluster_1_b"+ type_img: cluster_1_b, 
+             "cluster_2_r"+ type_img: cluster_2_r,"cluster_2_g"+ type_img: cluster_2_g,
+             "cluster_2_b"+ type_img: cluster_2_b, 
+             "cluster_3_r"+ type_img: cluster_3_r,"cluster_3_g"+ type_img: cluster_3_g,
+             "cluster_3_b"+ type_img: cluster_3_b,
+#             "cluster_4_r"+ type_img: cluster_4_r,"cluster_4_g"+ type_img: cluster_4_g,
+#             "cluster_4_b"+ type_img: cluster_4_b,
+#             "cluster_5_r"+ type_img: cluster_5_r,"cluster_5_g"+ type_img: cluster_5_g,
+#             "cluster_5_b"+ type_img: cluster_5_b,
+             "cluster_1_prop"+ type_img: cluster_1_prop,
+             "cluster_2_prop"+ type_img: cluster_2_prop, "cluster_3_prop"+ type_img: cluster_3_prop}
+#             "cluster_4_prop"+ type_img: cluster_4_prop, 
+#             "cluster_5_prop"+ type_img: cluster_5_prop}
+    
+    return(catch)
  
 
 # define a function to find k for kmeans
@@ -694,3 +965,13 @@ def for_different_k(n_clusters, paths):
                       type_img = "HSV") for i in paths)
     seg_beans_hsv_kmeans = pd.DataFrame(result)
     return(seg_beans_rgb_kmeans,seg_beans_hsv_kmeans)    
+    
+
+def adjust_gamma(image, gamma=1.0):
+	# build a lookup table mapping the pixel values [0, 255] to
+	# their adjusted gamma values
+	invGamma = 1.0 / gamma
+	table = np.array([((i / 255.0) ** invGamma) * 255
+		for i in np.arange(0, 256)]).astype("uint8")
+	# apply gamma correction using the lookup table
+	return cv2.LUT(image, table)
