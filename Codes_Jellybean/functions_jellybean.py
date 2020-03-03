@@ -967,7 +967,7 @@ def for_different_k(n_clusters, paths):
     return(seg_beans_rgb_kmeans,seg_beans_hsv_kmeans)    
     
 
-def adjust_gamma(image, gamma=1.0):
+def adjust_gamma(image, gamma):
 	# build a lookup table mapping the pixel values [0, 255] to
 	# their adjusted gamma values
 	invGamma = 1.0 / gamma
