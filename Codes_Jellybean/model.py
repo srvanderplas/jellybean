@@ -14,12 +14,14 @@ import sklearn.discriminant_analysis as da
 from collections import Counter 
 from sklearn.neighbors import NearestCentroid
 from skimage.segmentation import flood, flood_fill
+from scipy import ndimage
 # set directory to D:Jellybean
 import os
 import pickle
 os.getcwd()
 os.chdir("D:\Jellybean")
 import functions_jellybean as fj
+from skimage.segmentation import clear_border
 #from joblib import Parallel, delayed
 # hsv features
 seg_beans = pd.read_csv("D:\Jellybean\segmented_beans_parms.csv")
@@ -131,6 +133,25 @@ seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
 seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
 
 
+# gift box
+# rgb features
+#seg_beans_rgb = pd.read_csv(r"D:\Jellybean\segmented_beans_parms_rgb_gift_box.csv")
+#
+## make additional features
+#seg_beans_rgb["b_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["b_std"]
+#seg_beans_rgb["g_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["g_std"]
+#seg_beans_rgb["r_ratio"] = seg_beans_rgb["r_mean"]/seg_beans_rgb["r_std"]
+#
+#seg_beans_rgb["bg_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["g_mean"]
+#seg_beans_rgb["br_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["r_mean"]
+#seg_beans_rgb["gr_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["r_mean"]
+#
+#seg_beans_rgb["bgsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["g_std"]
+#seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
+#seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
+#
+
+
 # kmeans rgb
 seg_beans_rgb_kmeans = pd.read_csv("D:\Jellybean\kmeans_rgb_features_1.csv")
 
@@ -143,12 +164,98 @@ combined_1 = pd.concat([seg_beans,seg_beans_rgb.iloc[:,1:], seg_beans_yuv.iloc[:
                       seg_beans_hsv_kmeans], axis =1)
 
 
+### just on gift box
+seg_beans = pd.read_csv("D:\Jellybean\segmented_beans_parms_1_gift_box.csv")
+
+# make additional features
+seg_beans["h_ratio"] = seg_beans["h_mean"]/seg_beans["h_std"]
+seg_beans["s_ratio"] = seg_beans["s_mean"]/seg_beans["s_std"]
+seg_beans["v_ratio"] = seg_beans["v_mean"]/seg_beans["v_std"]
+
+seg_beans["hs_ratio"] = seg_beans["h_mean"]/seg_beans["s_mean"]
+seg_beans["hv_ratio"] = seg_beans["h_mean"]/seg_beans["v_mean"]
+seg_beans["sv_ratio"] = seg_beans["s_mean"]/seg_beans["v_mean"]
+
+seg_beans["hsd_ratio"] = seg_beans["h_std"]/seg_beans["s_std"]
+seg_beans["hvd_ratio"] = seg_beans["h_std"]/seg_beans["v_std"]
+seg_beans["svd_ratio"] = seg_beans["s_std"]/seg_beans["v_std"]
+
+# yuv features
+seg_beans_yuv = pd.read_csv("D:\Jellybean\segmented_beans_parms_yuv_1_gift_box.csv")
+
+# make additional features
+seg_beans_yuv["y_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["y_std"]
+seg_beans_yuv["u_ratio"] = seg_beans_yuv["u_mean"]/seg_beans_yuv["u_std"]
+seg_beans_yuv["v_ratio"] = seg_beans_yuv["v_mean"]/seg_beans_yuv["v_std"]
+
+seg_beans_yuv["yu_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["u_mean"]
+seg_beans_yuv["yv_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["v_mean"]
+seg_beans_yuv["uv_ratio"] = seg_beans_yuv["u_mean"]/seg_beans_yuv["v_mean"]
+
+seg_beans_yuv["yusd_ratio"] = seg_beans_yuv["y_std"]/seg_beans_yuv["u_std"]
+seg_beans_yuv["yvsd_ratio"] = seg_beans_yuv["y_std"]/seg_beans_yuv["v_std"]
+seg_beans_yuv["uvsd_ratio"] = seg_beans_yuv["u_std"]/seg_beans_yuv["v_std"]
+
+# rgb features
+seg_beans_rgb = pd.read_csv("D:\Jellybean\segmented_beans_parms_rgb_1_gift_box.csv")
+
+# make additional features
+seg_beans_rgb["b_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["b_std"]
+seg_beans_rgb["g_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["r_ratio"] = seg_beans_rgb["r_mean"]/seg_beans_rgb["r_std"]
+
+seg_beans_rgb["bg_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["g_mean"]
+seg_beans_rgb["br_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["r_mean"]
+seg_beans_rgb["gr_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["r_mean"]
+
+seg_beans_rgb["bgsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
+seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
+
+
+# gift box
+# rgb features
+#seg_beans_rgb = pd.read_csv(r"D:\Jellybean\segmented_beans_parms_rgb_gift_box.csv")
+
+# make additional features
+#seg_beans_rgb["b_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["b_std"]
+#seg_beans_rgb["g_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["g_std"]
+#seg_beans_rgb["r_ratio"] = seg_beans_rgb["r_mean"]/seg_beans_rgb["r_std"]
+#
+#seg_beans_rgb["bg_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["g_mean"]
+#seg_beans_rgb["br_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["r_mean"]
+#seg_beans_rgb["gr_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["r_mean"]
+#
+#seg_beans_rgb["bgsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["g_std"]
+#seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
+#seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
+
+
+
+# kmeans rgb
+seg_beans_rgb_kmeans = pd.read_csv("D:\Jellybean\kmeans_rgb_features_1_gift_box.csv")
+
+
+# kmeans hsv
+seg_beans_hsv_kmeans = pd.read_csv("D:\Jellybean\kmeans_hsv_features_1_gift_box.csv")
+
+
+combined_1 = pd.concat([seg_beans,seg_beans_rgb.iloc[:,1:], seg_beans_yuv.iloc[:,1:], seg_beans_rgb_kmeans, 
+                      seg_beans_hsv_kmeans], axis =1)
+
+#combined_1 = pd.concat([seg_beans], axis =1)
+
+
 #combined = pd.concat([combined, combined_1])
 #combined = seg_beans
-combined = seg_beans_rgb
+#combined = seg_beans_rgb
 #combined_1 = pd.concat([seg_beans,seg_beans_rgb.iloc[:,1:]], axis =1)
-#combined = pd.concat([combined_1])
+combined = pd.concat([combined_1])
+combined = combined.drop(["h_ratio"], axis = 1)
+#drop any feature that has na or inf 
 
+#combined.reset_index(drop = True)
+#combined = pd.concat([combined.iloc[:,0], combined.iloc[:,1:].astype(np.float32)], axis = 1)
 
 le = preprocessing.LabelEncoder()
 
@@ -175,7 +282,7 @@ random_grid = {'n_estimators': n_estimators}
 #               'min_samples_leaf': min_samples_leaf,
 #               'bootstrap': bootstrap}
 
-rf_random = GridSearchCV(estimator = rf, param_grid = random_grid, cv = 5, verbose=10, n_jobs = 6)
+rf_random = GridSearchCV(estimator = rf, param_grid = random_grid, cv = 2, verbose=10, n_jobs = 6)
 # Fit the random search model
 rf_random.fit(train_features, train_labels)
 rf_random.best_estimator_
@@ -187,6 +294,7 @@ rf_random.best_params_
 
 pickle.dump(rf_random, open("random_forest.sav", 'wb'))
 
+# feature importances
 result_imp = np.transpose(pd.DataFrame([train_features.columns, rf_random.best_estimator_.feature_importances_]))
 
 result_imp = result_imp.sort_values(by=[1], ascending = False)
@@ -211,6 +319,33 @@ rf_random.fit(train_features, train_labels)
 rf_random.best_estimator_
 rf_random.best_score_
 rf_random.best_params_
+
+
+# test set
+#test_set = pd.read_csv(r"D:\Jellybean\segmented_beans_parms_rgb_gift_box.csv")
+# rgb features
+seg_beans_rgb = pd.read_csv(r"D:\Jellybean\segmented_beans_parms_rgb_gift_box.csv")
+
+# make additional features
+seg_beans_rgb["b_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["b_std"]
+seg_beans_rgb["g_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["r_ratio"] = seg_beans_rgb["r_mean"]/seg_beans_rgb["r_std"]
+
+seg_beans_rgb["bg_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["g_mean"]
+seg_beans_rgb["br_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["r_mean"]
+seg_beans_rgb["gr_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["r_mean"]
+
+seg_beans_rgb["bgsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
+seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
+
+y_test = seg_beans_rgb.iloc[:,0]
+
+y_pred = rf_random.best_estimator_.predict(seg_beans_rgb.iloc[:,1:])
+y_pred = [le.inverse_transform([i])[0] for i in y_pred]
+
+
+(y_test == y_pred).sum()/len(y_pred)
 
 catch = []
 for feature in zip(train_features.columns, rf_random.best_estimator_.feature_importances_):
@@ -382,7 +517,7 @@ test_image = cv2.imread(r"D:\Jellybean\Test_Images\pomegranate-jelly-belly-beans
 path = r"D:\Jellybean\Test_Images\pomegranate-jelly-belly-beans.png"
 test_image = cv2.imread(path,0)
 ret2,th2 = cv2.threshold(test_image,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-from scipy import ndimage
+
 th2 = cv2.convertScaleAbs(ndimage.binary_fill_holes(th2).astype(float)*255)
 mask_3d = np.dstack([th2.astype(bool)]*3)
 test_image = cv2.imread(r"D:\Jellybean\Test_Images\pomegranate-jelly-belly-beans.png")
@@ -447,52 +582,24 @@ le.inverse_transform([rf_random.best_estimator_.predict(seg_beans_rgb)])
 
 # get background first
     # read the chunk
-path = r"D:\Jellybean\Test_Images\trynna_1.PNG"
-test_image = cv2.imread(path)/255.0
-
-# grayscale and threshold
-img = test_image[:,:,0]*0.0722 + test_image[:,:,1]*0.7152 + test_image[:,:,2]*0.2126
-dist_transform = cv2.convertScaleAbs(img*255)
-equ = cv2.equalizeHist(dist_transform)/255.0
-img = cv2.convertScaleAbs(equ*255)
-ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-
-
-th2 = ndimage.binary_fill_holes(th2)
-sure_bg =th2.copy().astype(float)
-
-# now get sure_fg
-img = test_image[:,:,0]*0.0722 + test_image[:,:,1]*0.7152 + test_image[:,:,2]*0.2126
-dist_transform = cv2.convertScaleAbs(img*255)
-equ = cv2.equalizeHist(dist_transform)/255.0
-img = cv2.convertScaleAbs(equ*255)
-ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-th2 = th2/255
-th2 =  th2.astype(bool)
-th2 = ~th2
-light_coat = flood_fill(th2.astype(float), (0, 0),0)
-dist_transform = cv2.distanceTransform(cv2.convertScaleAbs(light_coat*255),cv2.DIST_L2,5)/255.0
-dist_transform = cv2.convertScaleAbs(dist_transform*255)
-ret2,th2 = cv2.threshold(dist_transform,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
-# find contours
-contours, hierarchy = cv2.findContours(th2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-obj = [i for i,n in enumerate(contours) if cv2.contourArea(n) > 80]
-
-
-
-mask = np.zeros(img.shape, np.uint8)
-
-
-for i in obj:
-    cv2.drawContours(mask, contours, i, (255,255), -1) 
-
-cv2.dilate(mask, kernel, 2)
-sure_fg = mask.copy()/255.0
-
-
-fj.conduct_watershed(test_image, sure_fg, sure_bg)
-
+    
+# function to split jellybeans from gift box images
+# set directory to D:Jellybean
+import os
+os.getcwd()
+os.chdir("D:\Jellybean")
+import functions_jellybean as fj
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+from scipy import ndimage
+import glob
+from PIL import Image
+import pandas as pd
+from  tqdm import tqdm
+from collections import Counter
+from joblib import Parallel, delayed
+from joblib import parallel_backend
 
 
 
@@ -506,9 +613,9 @@ fj.conduct_watershed(test_image, sure_fg, sure_bg)
 
 #sure_bg, sure_fg = random_walker_func(test_image)
 
-cv2.imshow('watershed 2d', open_cv_image)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+#cv2.imshow('watershed 2d', th2)
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
 
 
 
