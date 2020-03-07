@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 import cv2
-
+from skimage import measure, color, io
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import  GridSearchCV
 from sklearn.linear_model import LogisticRegression
@@ -13,6 +13,13 @@ import xgboost as xgb
 import sklearn.discriminant_analysis as da
 from collections import Counter 
 from sklearn.neighbors import NearestCentroid
+from skimage.segmentation import flood, flood_fill
+# set directory to D:Jellybean
+import os
+import pickle
+os.getcwd()
+os.chdir("D:\Jellybean")
+import functions_jellybean as fj
 #from joblib import Parallel, delayed
 # hsv features
 seg_beans = pd.read_csv("D:\Jellybean\segmented_beans_parms.csv")
@@ -75,6 +82,73 @@ combined = pd.concat([seg_beans,seg_beans_rgb.iloc[:,1:], seg_beans_yuv.iloc[:,1
                       seg_beans_hsv_kmeans], axis =1)
 
 
+# gamma = 1
+seg_beans = pd.read_csv("D:\Jellybean\segmented_beans_parms_1.csv")
+
+# make additional features
+seg_beans["h_ratio"] = seg_beans["h_mean"]/seg_beans["h_std"]
+seg_beans["s_ratio"] = seg_beans["s_mean"]/seg_beans["s_std"]
+seg_beans["v_ratio"] = seg_beans["v_mean"]/seg_beans["v_std"]
+
+seg_beans["hs_ratio"] = seg_beans["h_mean"]/seg_beans["s_mean"]
+seg_beans["hv_ratio"] = seg_beans["h_mean"]/seg_beans["v_mean"]
+seg_beans["sv_ratio"] = seg_beans["s_mean"]/seg_beans["v_mean"]
+
+seg_beans["hsd_ratio"] = seg_beans["h_std"]/seg_beans["s_std"]
+seg_beans["hvd_ratio"] = seg_beans["h_std"]/seg_beans["v_std"]
+seg_beans["svd_ratio"] = seg_beans["s_std"]/seg_beans["v_std"]
+
+# yuv features
+seg_beans_yuv = pd.read_csv("D:\Jellybean\segmented_beans_parms_yuv_1.csv")
+
+# make additional features
+seg_beans_yuv["y_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["y_std"]
+seg_beans_yuv["u_ratio"] = seg_beans_yuv["u_mean"]/seg_beans_yuv["u_std"]
+seg_beans_yuv["v_ratio"] = seg_beans_yuv["v_mean"]/seg_beans_yuv["v_std"]
+
+seg_beans_yuv["yu_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["u_mean"]
+seg_beans_yuv["yv_ratio"] = seg_beans_yuv["y_mean"]/seg_beans_yuv["v_mean"]
+seg_beans_yuv["uv_ratio"] = seg_beans_yuv["u_mean"]/seg_beans_yuv["v_mean"]
+
+seg_beans_yuv["yusd_ratio"] = seg_beans_yuv["y_std"]/seg_beans_yuv["u_std"]
+seg_beans_yuv["yvsd_ratio"] = seg_beans_yuv["y_std"]/seg_beans_yuv["v_std"]
+seg_beans_yuv["uvsd_ratio"] = seg_beans_yuv["u_std"]/seg_beans_yuv["v_std"]
+
+# rgb features
+seg_beans_rgb = pd.read_csv("D:\Jellybean\segmented_beans_parms_rgb_1.csv")
+
+# make additional features
+seg_beans_rgb["b_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["b_std"]
+seg_beans_rgb["g_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["r_ratio"] = seg_beans_rgb["r_mean"]/seg_beans_rgb["r_std"]
+
+seg_beans_rgb["bg_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["g_mean"]
+seg_beans_rgb["br_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["r_mean"]
+seg_beans_rgb["gr_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["r_mean"]
+
+seg_beans_rgb["bgsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
+seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
+
+
+# kmeans rgb
+seg_beans_rgb_kmeans = pd.read_csv("D:\Jellybean\kmeans_rgb_features_1.csv")
+
+
+# kmeans hsv
+seg_beans_hsv_kmeans = pd.read_csv("D:\Jellybean\kmeans_hsv_features_1.csv")
+
+
+combined_1 = pd.concat([seg_beans,seg_beans_rgb.iloc[:,1:], seg_beans_yuv.iloc[:,1:], seg_beans_rgb_kmeans, 
+                      seg_beans_hsv_kmeans], axis =1)
+
+
+#combined = pd.concat([combined, combined_1])
+#combined = seg_beans
+combined = seg_beans_rgb
+#combined_1 = pd.concat([seg_beans,seg_beans_rgb.iloc[:,1:]], axis =1)
+#combined = pd.concat([combined_1])
+
 
 le = preprocessing.LabelEncoder()
 
@@ -83,6 +157,7 @@ train_labels = combined[combined.columns[0]]
 le.fit(train_labels)
 train_labels = le.transform(train_labels) 
 le.inverse_transform([1])
+pickle.dump(le, open("le.sav", 'wb'))
 # random forest fittting and tuning
 
 n_estimators = [int(x) for x in np.arange(1,1002,100)]
@@ -91,7 +166,7 @@ n_estimators = [int(x) for x in np.arange(1,1002,100)]
 #min_samples_leaf = np.arange(1,5)/10
 # Use the random grid to search for best hyperparameters
 # First create the base model to tune
-rf = RandomForestClassifier()
+rf = RandomForestClassifier(random_state = 42)
 # Create the random grid
 random_grid = {'n_estimators': n_estimators}
 #               'max_features': max_features,
@@ -108,6 +183,9 @@ rf_random.best_score_
 rf_random.best_params_
 
 
+
+
+pickle.dump(rf_random, open("random_forest.sav", 'wb'))
 
 result_imp = np.transpose(pd.DataFrame([train_features.columns, rf_random.best_estimator_.feature_importances_]))
 
@@ -134,9 +212,12 @@ rf_random.best_estimator_
 rf_random.best_score_
 rf_random.best_params_
 
+catch = []
 for feature in zip(train_features.columns, rf_random.best_estimator_.feature_importances_):
-    print(feature)
+    catch.append(feature)
+#    print(feature)
 
+df = pd.DataFrame(catch).sort_values(by = 1, ascending = False)
 
 # elastic net 
 # Get column names first
@@ -283,20 +364,159 @@ path = r"D:\Jellybean\Test_Images\Tutti-Fruitti.png"
 path = r"D:\Jellybean\Test_Images\Strawberry-Jam-Signature.png"
 path = r"D:\Jellybean\Test_Images\Red-Apple-Signature-ns_fg.png"
 path = r"D:\Jellybean\Test_Images\Watermelon-Signature-ns_fg.png"
+path = r"D:\Jellybean\Test_Images\aw_CREAM_sODA.PNG"
+path = r"D:\Jellybean\Test_Images\ff.png"
 test_image = Image.open(path).convert('RGB').crop((Image.open(path).convert('RGB').getbbox())) 
-open_cv_image = np.array(test_image)[:, :, ::-1]     
+open_cv_image = np.array(test_image)[:, :, ::-1]
+#cv2.floodFill(test_image, None, seedPoint=(0,0), newVal=(0, 0, 0))
+rf_random.best_estimator_
+
+
+# Floodfill
+#seed_point = (0, 0)
+#cv2.floodFill(open_cv_image, None, seedPoint=seed_point, newVal=(36, 255, 12), loDiff=(0, 0, 0, 0), upDiff=(0, 0, 0, 0))
+#
+#
+# reading in single image and making background black
+test_image = cv2.imread(r"D:\Jellybean\Test_Images\pomegranate-jelly-belly-beans.png")
+path = r"D:\Jellybean\Test_Images\pomegranate-jelly-belly-beans.png"
+test_image = cv2.imread(path,0)
+ret2,th2 = cv2.threshold(test_image,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+from scipy import ndimage
+th2 = cv2.convertScaleAbs(ndimage.binary_fill_holes(th2).astype(float)*255)
+mask_3d = np.dstack([th2.astype(bool)]*3)
+test_image = cv2.imread(r"D:\Jellybean\Test_Images\pomegranate-jelly-belly-beans.png")
+new_img = test_image*mask_3d
+open_cv_image = new_img
+
+#cv2.putText(open_cv_image,"Hello World!!!", (10,10), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+
+#open_cv_image = cv2.cvtColor(np.array(new_img), cv2.COLOR_RGB2BGR)
+#open_cv_image = open_cv_image[:, :, ::-1]
+#open_cv_image = adjust_gamma(open_cv_image, gamma) 
+#    open_cv_image = open_cv_image[:, :, ::-1]
+
+
+
+h, s, v = cv2.split(open_cv_image)
+
+name = ["pomogranate"]
+        
+            # make an iterable object
+zip_iter = zip(h.ravel(),s.ravel(),v.ravel())
+        
+            # remove black pixels
+chk = [i for i in zip_iter if np.sum(i) > 0]
+        
+            # get the h, s and v vectors
+h_vec = [i[0] for i in chk]
+#            h_vec_app.append(h_vec)
+h_parms = [np.mean(h_vec), np.std(h_vec)]
+s_vec = [i[1] for i in chk]
+s_parms = [np.mean(s_vec), np.std(s_vec)]
+#           s_vec_app.append(s_vec)
+v_vec = [i[2] for i in chk]
+v_parms = [np.mean(v_vec), np.std(v_vec)]
+#            v_vec_app.append(v_vec)
+            
+catch = { "b_mean": h_parms[0], "b_std": h_parms[1], 
+                     "g_mean": s_parms[0], "g_std": s_parms[1],"r_mean": v_parms[0], "r_std": v_parms[1]}
+
+
+test_df = pd.DataFrame(catch, index = [0])
+
+seg_beans_rgb = test_df
+
+seg_beans_rgb["b_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["b_std"]
+seg_beans_rgb["g_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["r_ratio"] = seg_beans_rgb["r_mean"]/seg_beans_rgb["r_std"]
+
+seg_beans_rgb["bg_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["g_mean"]
+seg_beans_rgb["br_ratio"] = seg_beans_rgb["b_mean"]/seg_beans_rgb["r_mean"]
+seg_beans_rgb["gr_ratio"] = seg_beans_rgb["g_mean"]/seg_beans_rgb["r_mean"]
+
+seg_beans_rgb["bgsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["g_std"]
+seg_beans_rgb["brsd_ratio"] = seg_beans_rgb["b_std"]/seg_beans_rgb["r_std"]
+seg_beans_rgb["grsd_ratio"] = seg_beans_rgb["g_std"]/seg_beans_rgb["r_std"]
+
+
+le.inverse_transform([rf_random.best_estimator_.predict(seg_beans_rgb)])
+
+# trying watershed
+
+
+# get background first
+    # read the chunk
+path = r"D:\Jellybean\Test_Images\trynna_1.PNG"
+test_image = cv2.imread(path)/255.0
+
+# grayscale and threshold
+img = test_image[:,:,0]*0.0722 + test_image[:,:,1]*0.7152 + test_image[:,:,2]*0.2126
+dist_transform = cv2.convertScaleAbs(img*255)
+equ = cv2.equalizeHist(dist_transform)/255.0
+img = cv2.convertScaleAbs(equ*255)
+ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+
+
+th2 = ndimage.binary_fill_holes(th2)
+sure_bg =th2.copy().astype(float)
+
+# now get sure_fg
+img = test_image[:,:,0]*0.0722 + test_image[:,:,1]*0.7152 + test_image[:,:,2]*0.2126
+dist_transform = cv2.convertScaleAbs(img*255)
+equ = cv2.equalizeHist(dist_transform)/255.0
+img = cv2.convertScaleAbs(equ*255)
+ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+th2 = th2/255
+th2 =  th2.astype(bool)
+th2 = ~th2
+light_coat = flood_fill(th2.astype(float), (0, 0),0)
+dist_transform = cv2.distanceTransform(cv2.convertScaleAbs(light_coat*255),cv2.DIST_L2,5)/255.0
+dist_transform = cv2.convertScaleAbs(dist_transform*255)
+ret2,th2 = cv2.threshold(dist_transform,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+
+# find contours
+contours, hierarchy = cv2.findContours(th2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+obj = [i for i,n in enumerate(contours) if cv2.contourArea(n) > 80]
+
+
+
+mask = np.zeros(img.shape, np.uint8)
+
+
+for i in obj:
+    cv2.drawContours(mask, contours, i, (255,255), -1) 
+
+cv2.dilate(mask, kernel, 2)
+sure_fg = mask.copy()/255.0
+
+
+fj.conduct_watershed(test_image, sure_fg, sure_bg)
 
 
 
 
-#test_image = cv2.imread(r"D:\Jellybean\check_ff.png",0)
-##
-##
-#light_coat = flood_fill(test_image, (2, 2), 0, tolerance=10)
-##light_coat = flood_fill(light_coat, (2, 2), 0, tolerance=10)
-#cv2.imshow('mask', light_coat)
-#cv2.waitKey(0)
-#cv2.destroyAllWindows()
+# fill holes
+#sure_bg = flood_fill(th2.astype(float), (0, 0),0)
+
+
+
+
+
+
+#sure_bg, sure_fg = random_walker_func(test_image)
+
+cv2.imshow('watershed 2d', open_cv_image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+
+
+
+#stack_img = Image.open(path_obj).convert('RGB').crop((Image.open(path_obj).convert('RGB').getbbox()))
+        # convert to open cv image
+
+
 
 #convert to hsv
 hsv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2HSV)
