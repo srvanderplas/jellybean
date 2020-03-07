@@ -18,6 +18,8 @@ from sklearn.cluster import KMeans
 from collections import Counter
 from joblib import Parallel, delayed
 import pandas as pd
+from skimage.segmentation import clear_border
+from skimage.segmentation import flood, flood_fill
 # define a function to read in the image and apply the masks
 def read_process_image(path): 
     # read in the image, convert to float
@@ -975,3 +977,191 @@ def adjust_gamma(image, gamma):
 		for i in np.arange(0, 256)]).astype("uint8")
 	# apply gamma correction using the lookup table
 	return cv2.LUT(image, table)
+
+
+
+def get_images_gift_box(path): 
+    file_name = path.split("\\")[-1].split(".")[0]
+    print(file_name)
+#    path = "D:\Jellybean\Test_Images\coconut-sm.png"
+#    path = r"D:\Jellybean\Test_Images\kiwi-sm.png"
+#    path = r"D:\Jellybean\Test_Images\peach-sm.png"
+#    path = r"D:\Jellybean\Test_Images\strawberry_jam-sm.png"
+    test_image = cv2.imread(path)/255.0
+
+#    x,y,_ = test_image.shape
+
+# cut 10%?
+
+#test_image = test_image[round(y*0.05):round(y*0.95), round(x*0.05):round(x*0.95)]
+
+
+
+#cv2.imshow('watershed 2d', test_image.astype(float))
+#cv2.waitKey(0)get_images_gift_box
+#cv2.destroyAllWindows()
+# grayscale and threshold
+    img = test_image[:,:,0]*0.0722 + test_image[:,:,1]*0.7152 + test_image[:,:,2]*0.2126
+    dist_transform = cv2.convertScaleAbs(img*255)
+    equ = cv2.equalizeHist(dist_transform)/255.0
+    img = cv2.convertScaleAbs(equ*255)
+    ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    th2 = ndimage.binary_fill_holes(th2)
+    #opening = clear_border(th2)
+    th2 = flood_fill(th2.astype(float), (0, 0),0)
+#    cv2.imshow('watershed 2d', th2.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+
+    #sure_bg = opening.astype(float)
+    sure_bg =th2.copy().astype(float)
+    kernel = np.ones((5,5),np.uint8)
+    erosion = cv2.erode(sure_bg,kernel,iterations = 1)
+
+    # remove small dots
+    erosion = clear_border(erosion)
+    opening = cv2.convertScaleAbs(erosion*255)
+
+#    cv2.imshow('watershed 2d', opening.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+    mask = np.zeros(opening.shape, np.uint8)
+    # find contours
+    contours, hierarchy = cv2.findContours(opening, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    obj = [i for i,n in enumerate(contours) if cv2.contourArea(n) > 80]
+
+    for i in obj:
+        cv2.drawContours(mask, contours, i, (255,255), -1) 
+
+#
+#    cv2.imshow('watershed 2d', mask.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+    # dilate this mask?
+    kernel = np.ones((5,5),np.uint8)
+    dilate = cv2.dilate(mask,kernel,iterations = 2)
+#    cv2.imshow('watershed 2d', dilate.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+    sure_bg = dilate.copy()
+#    cv2.imshow('watershed 2d', sure_bg.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+    # now get sure_fg
+    img = test_image[:,:,0]*0.0722 + test_image[:,:,1]*0.7152 + test_image[:,:,2]*0.2126
+    dist_transform = cv2.convertScaleAbs(img*255)
+    equ = cv2.equalizeHist(dist_transform)/255.0
+    img = cv2.convertScaleAbs(equ*255)
+    ret2,th2 = cv2.threshold(img,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    th2 = th2/255
+    th2 = ndimage.binary_fill_holes(th2)
+    th2 = flood_fill(th2.astype(float), (0, 0),0)
+    
+        #sure_bg = opening.astype(float)
+    sure_fg =th2.copy().astype(float)
+    kernel = np.ones((5,5),np.uint8)
+    erosion = cv2.erode(sure_fg,kernel,iterations = 1)
+
+    # remove small dots
+    erosion = clear_border(erosion)
+    opening = cv2.convertScaleAbs(erosion*255)
+
+    # remove small dots
+    erosion = clear_border(erosion)
+    opening = cv2.convertScaleAbs(erosion*255)
+
+#    cv2.imshow('watershed 2d', opening.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+    #th2 = flood_fill(th2.astype(float), (0, 0),0)
+    #th2 = flood_fill(th2.astype(float), (728, 0),0)
+#    cv2.imshow('watershed 2d', opening.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+
+    #th2 =  th2.astype(bool)
+    #th2 = ~th2
+    light_coat = opening.copy()
+
+    dist_transform = cv2.distanceTransform(cv2.convertScaleAbs(light_coat*255),cv2.DIST_L2,5)/255.0
+    dist_transform = cv2.convertScaleAbs(dist_transform*255)
+    ret2,th2 = cv2.threshold(dist_transform,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#    cv2.imshow('watershed 2d', th2.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+
+# find contours
+#contours, hierarchy = cv2.findContours(th2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+#obj = [i for i,n in enumerate(contours) if cv2.contourArea(n) > 80]
+#
+
+
+#mask = np.zeros(img.shape, np.uint8)
+#cv2.drawContours(mask, contours, 0, (255,255), -1) 
+
+
+#for i in obj:
+#    cv2.drawContours(mask, contours, i, (255,255), -1) 
+
+#kernel = np.ones((5,5),np.uint8)
+#cv2.dilate(mask, kernel, 2)
+
+    sure_fg = th2.copy()/255.0
+    opening = clear_border(sure_fg)
+    opening = cv2.convertScaleAbs(opening*255)
+
+    mask = np.zeros(sure_fg.shape, np.uint8)
+    # find contours
+    contours, hierarchy = cv2.findContours(opening, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    obj = [i for i,n in enumerate(contours) if cv2.contourArea(n) > 80]
+
+    for i in obj:
+        cv2.drawContours(mask, contours, i, (255,255), -1) 
+
+
+    # now we are at the masks for the foreground
+    #label them
+    # after labeling get mask and fit ellipse
+    ret, markers = cv2.connectedComponents(mask)
+    markers = markers+1
+
+    contours_list = fj.find_markers(markers, cutoff = 100)
+
+    mask = np.zeros(markers.shape, dtype="uint8")
+    for i in contours_list:
+    # get the mask
+    
+        mask[markers == i] = 255
+        # fill holes in the mask
+        mask = cv2.convertScaleAbs(ndimage.binary_fill_holes(mask).astype(float)*255)
+        # detect contour in the mask
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # fit an ellipse to the contour
+        e = cv2.fitEllipse(contours[0])
+        # get  mask define by the ellipse
+        mask=cv2.ellipse(mask, e, color=(255,255,255), thickness=-1)/255.0
+# should we make the masks with ellipse
+
+#    cv2.imshow('watershed 2d', mask.astype(float))
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+
+    sure_fg = mask.copy()
+
+    img, markers = fj.conduct_watershed(test_image, sure_fg, sure_bg)
+    contours_list = fj.find_markers(markers, cutoff = 100)
+    capture = fj.get_the_beans(test_image,contours_list, markers)
+    
+    counter = 0
+    for j in range(len(capture)):
+        counter = counter + 1
+        img = cv2.convertScaleAbs(capture[j].copy()*255)
+        file_sub = r"D:\\Jellybean\\Split_Jellybeans_Gift_Box\\" + file_name + "_"  + str(counter) + ".png"
+        cv2.imwrite(file_sub, img)
